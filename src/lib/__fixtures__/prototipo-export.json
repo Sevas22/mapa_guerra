@@ -1,0 +1,278 @@
+{
+  "v": 1,
+  "name": "Ejercicio Cordillera (ejemplo ficticio)",
+  "speed": 2,
+  "phases": [
+    {
+      "id": "py0t3ay9",
+      "title": "Despliegue inicial",
+      "date": "D-1 · 05:00",
+      "desc": "Escenario de ejemplo. La Fuerza Azul ocupa posiciones de partida al norte; la Fuerza Roja defiende la colina del Objetivo Alfa.",
+      "view": { "c": [4.268, -74.635], "z": 12 }
+    },
+    {
+      "id": "j73bn9ok",
+      "title": "Avance sobre el objetivo",
+      "date": "D-1 · 09:30",
+      "desc": "Dos ejes de avance convergen sobre Alfa. Contacto con la posición roja a las 08:50.",
+      "view": { "c": [4.268, -74.635], "z": 12 }
+    },
+    {
+      "id": "u0o5ckpg",
+      "title": "Fase 4",
+      "date": "",
+      "desc": "",
+      "view": { "c": [4.268, -74.635], "z": 12 }
+    },
+    {
+      "id": "lngfaztg",
+      "title": "Fase añadida",
+      "date": "D-1 · 15:00",
+      "desc": "Alfa asegurado. La Fuerza Roja se repliega al sureste y la línea de frente se desplaza.",
+      "view": null
+    }
+  ],
+  "objects": [
+    {
+      "id": "gd63kwrx",
+      "kind": "unit",
+      "type": "infanteria",
+      "faction": "azul",
+      "echelon": "II",
+      "label": "BI-1",
+      "notes": "",
+      "start": 0,
+      "end": null,
+      "frames": {
+        "0": { "lat": 4.3, "lng": -74.66 },
+        "1": { "lat": 4.262, "lng": -74.622 },
+        "3": { "lat": 4.24, "lng": -74.603 }
+      }
+    },
+    {
+      "id": "4cykq5ci",
+      "kind": "unit",
+      "type": "blindados",
+      "faction": "azul",
+      "echelon": "I",
+      "label": "Cía B",
+      "notes": "",
+      "start": 0,
+      "end": null,
+      "frames": {
+        "0": { "lat": 4.306, "lng": -74.628 },
+        "1": { "lat": 4.272, "lng": -74.601 },
+        "3": { "lat": 4.247, "lng": -74.588 }
+      }
+    },
+    {
+      "id": "jgraaxa6",
+      "kind": "unit",
+      "type": "artilleria",
+      "faction": "azul",
+      "echelon": "I",
+      "label": "Bat. 3",
+      "notes": "",
+      "start": 0,
+      "end": null,
+      "frames": { "0": { "lat": 4.318, "lng": -74.7 } }
+    },
+    {
+      "id": "vqsfeej6",
+      "kind": "unit",
+      "type": "pc",
+      "faction": "azul",
+      "echelon": "II",
+      "label": "PC Azul",
+      "notes": "",
+      "start": 0,
+      "end": null,
+      "frames": { "0": { "lat": 4.322, "lng": -74.678 }, "3": { "lat": 4.29, "lng": -74.65 } }
+    },
+    {
+      "id": "ncvpmi0a",
+      "kind": "unit",
+      "type": "infanteria",
+      "faction": "roja",
+      "echelon": "I",
+      "label": "Roja 1",
+      "notes": "",
+      "start": 0,
+      "end": null,
+      "frames": {
+        "0": { "lat": 4.236, "lng": -74.6 },
+        "1": { "lat": 4.228, "lng": -74.592 },
+        "3": { "lat": 4.205, "lng": -74.565 }
+      }
+    },
+    {
+      "id": "jw8lflw2",
+      "kind": "unit",
+      "type": "reconocimiento",
+      "faction": "roja",
+      "echelon": "•••",
+      "label": "Roja R",
+      "notes": "",
+      "start": 0,
+      "end": 0,
+      "frames": { "0": { "lat": 4.258, "lng": -74.645 } }
+    },
+    {
+      "id": "cs2hjtb8",
+      "kind": "point",
+      "type": "objetivo",
+      "faction": "azul",
+      "label": "OBJ Alfa",
+      "notes": "",
+      "start": 0,
+      "end": null,
+      "frames": { "0": { "lat": 4.236, "lng": -74.598 } }
+    },
+    {
+      "id": "7wt2c15m",
+      "kind": "point",
+      "type": "evento",
+      "faction": "amarilla",
+      "label": "Contacto 08:50",
+      "notes": "",
+      "start": 1,
+      "end": 1,
+      "frames": { "1": { "lat": 4.25, "lng": -74.612 } }
+    },
+    {
+      "id": "5li7v3ti",
+      "kind": "line",
+      "type": "eje",
+      "faction": "azul",
+      "label": "",
+      "notes": "",
+      "start": 0,
+      "end": 1,
+      "frames": {
+        "0": {
+          "pts": [
+            [4.296, -74.656],
+            [4.272, -74.636],
+            [4.247, -74.606]
+          ]
+        }
+      }
+    },
+    {
+      "id": "2pq7jj3w",
+      "kind": "line",
+      "type": "eje",
+      "faction": "azul",
+      "label": "",
+      "notes": "",
+      "start": 0,
+      "end": 1,
+      "frames": {
+        "0": {
+          "pts": [
+            [4.302, -74.624],
+            [4.278, -74.607],
+            [4.252, -74.592]
+          ]
+        }
+      }
+    },
+    {
+      "id": "bbblfm8y",
+      "kind": "line",
+      "type": "frente",
+      "faction": "roja",
+      "label": "Línea de contacto",
+      "notes": "",
+      "start": 0,
+      "end": null,
+      "frames": {
+        "0": {
+          "pts": [
+            [4.262, -74.69],
+            [4.27, -74.64],
+            [4.268, -74.585]
+          ]
+        },
+        "1": {
+          "pts": [
+            [4.248, -74.69],
+            [4.255, -74.64],
+            [4.252, -74.585]
+          ]
+        },
+        "3": {
+          "pts": [
+            [4.222, -74.69],
+            [4.226, -74.64],
+            [4.222, -74.585]
+          ]
+        }
+      }
+    },
+    {
+      "id": "samhhxvi",
+      "kind": "line",
+      "type": "zona",
+      "faction": "roja",
+      "label": "Zona defensiva",
+      "notes": "",
+      "start": 0,
+      "end": 1,
+      "frames": {
+        "0": {
+          "pts": [
+            [4.25, -74.622],
+            [4.25, -74.58],
+            [4.22, -74.575],
+            [4.218, -74.615]
+          ]
+        }
+      }
+    },
+    {
+      "id": "pd2w5v7p",
+      "kind": "point",
+      "type": "base",
+      "faction": "azul",
+      "echelon": "",
+      "label": "",
+      "notes": "",
+      "start": 0,
+      "end": null,
+      "frames": { "0": { "lat": 4.25, "lng": -74.6 } }
+    },
+    {
+      "id": "nmj7m6ob",
+      "kind": "line",
+      "type": "ruta",
+      "faction": "azul",
+      "echelon": "",
+      "label": "",
+      "notes": "",
+      "start": 0,
+      "end": null,
+      "frames": {
+        "0": {
+          "pts": [
+            [4.2, -74.6],
+            [4.21, -74.62],
+            [4.22, -74.63]
+          ]
+        }
+      }
+    },
+    {
+      "id": "e0o5gqsv",
+      "kind": "unit",
+      "type": "sanidad",
+      "faction": "azul",
+      "echelon": "I",
+      "label": "",
+      "notes": "",
+      "start": 1,
+      "end": null,
+      "frames": { "1": { "lat": 4.26, "lng": -74.61 } }
+    }
+  ]
+}
