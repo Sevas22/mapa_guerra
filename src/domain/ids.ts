@@ -1,3 +1,5 @@
+import { TASK_IDS } from './tasks';
+
 /**
  * Identificadores válidos del modelo. Se conservan todos los del prototipo para
  * que sus archivos JSON sigan importándose; los nuevos siguen el manual
@@ -84,7 +86,17 @@ export const POINT_TYPES = [
   'lugar',
 ] as const;
 
-export const LINE_TYPES = ['frente', 'eje', 'ruta', 'zona'] as const;
+/** Trazos, áreas (AO, ANI, ABI) y tareas tácticas del capítulo 9. */
+export const LINE_TYPES = [
+  'frente',
+  'eje',
+  'ruta',
+  'zona',
+  'ao',
+  'ani',
+  'abi',
+  ...TASK_IDS,
+] as const;
 
 /** Modificadores del sector 2: movilidad (MFRE tabla 4-6). */
 export const MOBILITY_IDS = [

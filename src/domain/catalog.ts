@@ -7,6 +7,7 @@ import type {
   Reinforcement,
   UnitType,
 } from './types';
+import { TASKS, TASK_IDS, type TaskGroup } from './tasks';
 
 /**
  * Catálogos de simbología según el MFRE 1-02 «Términos y símbolos militares»
@@ -390,12 +391,35 @@ export const POINTS: Record<PointType, PointDef> = {
   },
 };
 
-export const LINES: Record<LineType, { name: string; min: number }> = {
-  frente: { name: 'Línea de frente', min: 2 },
-  eje: { name: 'Eje de avance', min: 2 },
-  ruta: { name: 'Ruta', min: 2 },
-  zona: { name: 'Zona / área', min: 3 },
-};
+export type LineGroup = 'Trazos' | 'Áreas' | TaskGroup;
+
+export interface LineDef {
+  name: string;
+  group: LineGroup;
+  /** Mínimo de vértices para terminar el trazo. */
+  min: number;
+  /** Máximo de vértices: al alcanzarlo el trazo se termina solo. */
+  max?: number;
+  /** Sigla del área (AO, ANI, ABI). */
+  area?: string;
+}
+
+const BASE_LINES = {
+  frente: { name: 'Línea de frente', group: 'Trazos', min: 2 },
+  eje: { name: 'Eje de avance', group: 'Trazos', min: 2 },
+  ruta: { name: 'Ruta', group: 'Trazos', min: 2 },
+  zona: { name: 'Zona / área', group: 'Áreas', min: 3 },
+  ao: { name: 'Área de operaciones', group: 'Áreas', min: 3, area: 'AO' },
+  ani: { name: 'Área nombrada de interés', group: 'Áreas', min: 3, area: 'ANI' },
+  abi: { name: 'Área blanco de interés', group: 'Áreas', min: 3, area: 'ABI' },
+} satisfies Record<string, LineDef>;
+
+export const LINES = {
+  ...BASE_LINES,
+  ...Object.fromEntries(
+    TASK_IDS.map((id) => [id, { name: TASKS[id].name, group: TASKS[id].group, min: 2, max: 2 }]),
+  ),
+} as Record<LineType, LineDef>;
 
 export interface Place {
   name: string;

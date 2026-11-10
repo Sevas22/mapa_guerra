@@ -3,7 +3,16 @@
  * militares» y la graficación estandarizada DIVFE. Devuelve cadenas para usarlas
  * en `L.divIcon` y en la paleta; no depende de React ni de Leaflet.
  */
-import { EFFECTIVENESS, FACTIONS, POINTS, UNITS, symbolColors, type FactionShape } from './catalog';
+import {
+  EFFECTIVENESS,
+  FACTIONS,
+  LINES,
+  POINTS,
+  UNITS,
+  symbolColors,
+  type FactionShape,
+} from './catalog';
+import { isTaskType, previewTask } from './tasks';
 import type {
   Effectiveness,
   FactionId,
@@ -474,15 +483,25 @@ export const textPreviewSVG = (c: string): string =>
 
 /** Vista previa de un trazo en la paleta. */
 export function previewLine(type: LineType, c: string): string {
+  if (isTaskType(type)) return previewTask(type, '#fff');
+  const area = LINES[type]?.area;
+  if (area)
+    return `<svg width="44" height="34" viewBox="0 0 44 34"><polygon points="4,8 38,3 41,29 7,31" fill="none" stroke="${RED}" stroke-width="2"/>${areaBadgeSVG(area, 9, 10)}</svg>`;
   if (type === 'zona')
     return `<svg width="44" height="34" viewBox="0 0 44 34"><polygon points="6,8 38,4 40,28 8,30" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2" stroke-dasharray="5 3"/></svg>`;
   const st = {
     frente: `stroke="${c}" stroke-width="4"`,
     eje: `stroke="${c}" stroke-width="6"`,
     ruta: `stroke="${c}" stroke-width="3" stroke-dasharray="6 4"`,
-  }[type];
+  }[type as 'frente' | 'eje' | 'ruta'];
   const head = type === 'eje' ? `<polygon points="30,8 42,14 33,22" fill="${c}"/>` : '';
   return `<svg width="44" height="34" viewBox="0 0 44 34"><path d="M3 28Q14 10 34 15" fill="none" ${st}/>${head}</svg>`;
+}
+
+/** Insignia DIVFE de un área (AO, ANI, ABI): pentágono redondeado con borde rojo. */
+export function areaBadgeSVG(text: string, x = 0, y = 0): string {
+  const w = 10 + text.length * 7;
+  return `<g transform="translate(${x},${y})"><path d="M2 0H${w - 6}L${w} 7L${w - 6} 14H2Q0 14 0 12V2Q0 0 2 0Z" fill="#fff" stroke="${RED}" stroke-width="1.6"/><text x="${(w - 3) / 2}" y="11" text-anchor="middle" font-size="11" font-weight="700" fill="${RED}" font-family="${FONT}">${esc(text)}</text></g>`;
 }
 
 /** Descripción de un `L.divIcon` sin depender de Leaflet. */
@@ -580,6 +599,15 @@ export function lineStyle(
 ): LineStyle {
   const c = FACTIONS[o.faction].vivid;
   const s = selected;
+  if (LINES[o.type]?.area)
+    return {
+      color: RED,
+      weight: s ? 4.5 : 2.6,
+      opacity: op,
+      lineJoin: 'round',
+      fillColor: RED,
+      fillOpacity: 0.06 * op,
+    };
   switch (o.type) {
     case 'eje':
       return {

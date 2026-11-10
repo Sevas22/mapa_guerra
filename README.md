@@ -134,6 +134,14 @@ Los símbolos siguen el manual **MFRE 1-02 «Términos y símbolos militares»**
   control, seguridad, inserción, decisión y disloque, puestos de vigilancia, PCA, zonas de
   desembarco y extracción, RP, IP, punto de coordinación, bases, aeropuerto, antena y lugar.
 
+- **Tareas tácticas** (capítulo 9, tablas 9-1 a 9-4): 43 tareas de la misión, facilitadoras,
+  retrógradas y de ataque de propósito especial (bloquear, aislar, asegurar, destruir, fijar,
+  infiltrar, emboscar, contraataque, repliegue…). Se dibujan con dos clics, desde la unidad hacia
+  el objetivo (en las circulares, centro y borde), en blanco con halo oscuro, y se animan entre
+  fases como cualquier trazo.
+- **Áreas DIVFE**: área de operaciones (AO), área nombrada de interés (ANI) y área blanco de
+  interés (ABI), con su insignia roja y la etiqueta del área.
+
 Todos los campos nuevos son opcionales, así que los archivos del prototipo siguen abriéndose.
 
 ## Arquitectura

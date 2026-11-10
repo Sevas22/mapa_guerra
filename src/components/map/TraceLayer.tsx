@@ -3,7 +3,7 @@
 import L from 'leaflet';
 import { memo, useCallback, useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
-import { FACTIONS } from '@/domain/catalog';
+import { FACTIONS, LINES } from '@/domain/catalog';
 import { HEAD_ICON, esc, headAngle, lineStyle } from '@/domain/symbols';
 import { objectStateAt } from '@/domain/timeline';
 import type { LatLngTuple, LineObject } from '@/domain/types';
@@ -44,7 +44,7 @@ function TraceLayerImpl({ obj, selected, phaseCount }: Props) {
 
   useEffect(() => {
     const opts: L.PolylineOptions = { bubblingMouseEvents: false };
-    const main = type === 'zona' ? L.polygon([], opts) : L.polyline([], opts);
+    const main = type === 'zona' || LINES[type]?.area ? L.polygon([], opts) : L.polyline([], opts);
     main.on('click', (e: L.LeafletMouseEvent) =>
       useEditorStore.getState().objectClick(id, e.latlng, e.originalEvent.shiftKey),
     );
@@ -60,18 +60,20 @@ function TraceLayerImpl({ obj, selected, phaseCount }: Props) {
     };
   }, [id, type]);
 
+  const area = LINES[type]?.area;
   useEffect(() => {
     const l = ref.current;
     if (!l) return;
     l.main.unbindTooltip();
-    if (obj.label)
-      l.main.bindTooltip(esc(obj.label), {
+    const html = (area ? `<span class="area-badge">${area}</span>` : '') + esc(obj.label);
+    if (obj.label || area)
+      l.main.bindTooltip(html, {
         permanent: true,
         direction: 'center',
         className: 'ltip',
         interactive: false,
       });
-  }, [obj.label]);
+  }, [obj.label, area]);
 
   const apply = useCallback(
     (time: number) => {

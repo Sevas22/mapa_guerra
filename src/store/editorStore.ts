@@ -157,7 +157,11 @@ export const useEditorStore = create<EditorState>()(
               addObjectAt({ kind: 'point', type: tool.type, frame }, faction, current, get().force);
             if (!shiftKey) get().setTool(SELECT);
           } else if (tool.mode === 'draw') {
-            set({ draft: [...(get().draft ?? []), [ll.lat, ll.lng]], draftError: null });
+            const draft: LatLngTuple[] = [...(get().draft ?? []), [ll.lat, ll.lng]];
+            set({ draft, draftError: null });
+            // Las tareas tácticas se definen con dos puntos: se terminan solas.
+            const max = LINES[tool.type].max;
+            if (max && draft.length >= max) get().finishDraft();
           } else if (selectedId) {
             set({ selectedId: null });
           }

@@ -6,6 +6,8 @@ import {
   POINTS,
   UNITS,
   forcesFor,
+  type LineDef,
+  type LineGroup,
   type PointDef,
   type PointGroup,
   type UnitDef,
@@ -26,6 +28,13 @@ const POINT_GROUPS: PointGroup[] = [
   'Puntos de control',
   'Aéreos',
   'Instalaciones y lugares',
+];
+
+const LINE_GROUPS: LineGroup[] = [
+  'Trazos',
+  'Áreas',
+  'Tareas tácticas',
+  'Facilitadoras y retrógradas',
 ];
 
 type ToolSpec =
@@ -166,19 +175,28 @@ export function Palette() {
           </div>
         </section>
       ))}
-      <section className="sec">
-        <h2 className="sec-h">Trazos</h2>
-        <div className="grid grid-cols-3 gap-1.5">
-          {(Object.entries(LINES) as [LineType, { name: string }][]).map(([k, l]) => (
-            <ToolButton
-              key={k}
-              spec={{ kind: 'line', type: k }}
-              name={l.name}
-              icon={<Svg html={previewLine(k, c)} />}
-            />
-          ))}
-        </div>
-      </section>
+      {LINE_GROUPS.map((g) => (
+        <section key={g} className="sec">
+          <h2 className="sec-h">{g}</h2>
+          {g === 'Tareas tácticas' ? (
+            <p className="note">
+              Dos clics: desde la unidad hacia el objetivo (en las circulares, centro y borde).
+            </p>
+          ) : null}
+          <div className="grid grid-cols-3 gap-1.5">
+            {(Object.entries(LINES) as [LineType, LineDef][])
+              .filter(([, l]) => l.group === g)
+              .map(([k, l]) => (
+                <ToolButton
+                  key={k}
+                  spec={{ kind: 'line', type: k }}
+                  name={l.name}
+                  icon={<Svg html={previewLine(k, c)} />}
+                />
+              ))}
+          </div>
+        </section>
+      ))}
     </>
   );
 }

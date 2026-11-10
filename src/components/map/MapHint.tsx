@@ -1,6 +1,7 @@
 'use client';
 
-import { POINTS, UNITS, plainName } from '@/domain/catalog';
+import { LINES, POINTS, UNITS, plainName } from '@/domain/catalog';
+import { TASKS, isTaskType } from '@/domain/tasks';
 import { useEditorStore } from '@/store/editorStore';
 
 /** Indicación flotante mientras hay una herramienta de colocación o dibujo activa. */
@@ -23,7 +24,12 @@ export function MapHint() {
   } else {
     msg =
       err ??
-      `${tool.redrawId ? 'Redibujando en esta fase. ' : ''}Clic para añadir vértices (${n}). Doble clic o Enter para terminar.`;
+      (tool.redrawId ? 'Redibujando en esta fase. ' : '') +
+        (isTaskType(tool.type)
+          ? TASKS[tool.type].circular
+            ? `${LINES[tool.type].name}: clic en el centro y luego en el borde (${n}/2).`
+            : `${LINES[tool.type].name}: clic en el origen y luego hacia el objetivo (${n}/2).`
+          : `Clic para añadir vértices (${n}). Doble clic o Enter para terminar.`);
   }
 
   const btn =

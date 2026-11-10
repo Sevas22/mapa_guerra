@@ -6,11 +6,14 @@ import { MapContainer, ScaleControl, ZoomControl, useMap, useMapEvents } from 'r
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from '@/domain/catalog';
 import { formatCursor } from '@/domain/coords';
 import { PULSE_ICON } from '@/domain/symbols';
+import { isTaskType, type TaskType } from '@/domain/tasks';
+import type { LineObject } from '@/domain/types';
 import { fitScenario, setMap } from '@/lib/mapBridge';
 import { useEditorStore } from '@/store/editorStore';
 import { BaseLayers } from './BaseLayers';
 import { DraftLayer } from './DraftLayer';
 import { MapStyleControl } from './MapStyleControl';
+import { TaskLayer } from './TaskLayer';
 import { TraceLayer } from './TraceLayer';
 import { UnitMarker } from './UnitMarker';
 
@@ -72,7 +75,14 @@ function ObjectLayers() {
   return (
     <>
       {objects.map((o) =>
-        o.kind === 'line' ? (
+        o.kind === 'line' && isTaskType(o.type) ? (
+          <TaskLayer
+            key={`${o.id}:${o.type}`}
+            obj={o as LineObject & { type: TaskType }}
+            selected={o.id === selectedId}
+            phaseCount={phaseCount}
+          />
+        ) : o.kind === 'line' ? (
           // La clave incluye el tipo: polígono y polilínea son capas distintas.
           <TraceLayer
             key={`${o.id}:${o.type}`}
