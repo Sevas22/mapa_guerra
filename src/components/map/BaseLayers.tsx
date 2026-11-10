@@ -1,21 +1,34 @@
 'use client';
 
 import { TileLayer } from 'react-leaflet';
-import { OVERLAYS, basemapById, type TileSpec } from '@/domain/basemaps';
+import { OVERLAYS, basemapById, isArcGIS, type LayerSource } from '@/domain/basemaps';
 import { useMapStyleStore } from '@/store/mapStyleStore';
+import { DynamicImageLayer } from './DynamicImageLayer';
 
 const MAX_ZOOM = 19;
 
-function Tiles({ spec, zIndex }: { spec: TileSpec; zIndex: number }) {
+function Layer({
+  id,
+  source,
+  role,
+  zIndex,
+}: {
+  id: string;
+  source: LayerSource;
+  role: 'base' | 'overlay';
+  zIndex: number;
+}) {
+  if (isArcGIS(source))
+    return <DynamicImageLayer id={id} spec={source} role={role} zIndex={zIndex} />;
   return (
     <TileLayer
-      url={spec.url}
-      attribution={spec.attribution}
+      url={source.url}
+      attribution={source.attribution}
       maxZoom={MAX_ZOOM}
-      maxNativeZoom={spec.maxNativeZoom}
-      subdomains={spec.subdomains ?? 'abc'}
-      opacity={spec.opacity ?? 1}
-      className={spec.className}
+      maxNativeZoom={source.maxNativeZoom}
+      subdomains={source.subdomains ?? 'abc'}
+      opacity={source.opacity ?? 1}
+      className={source.className}
       zIndex={zIndex}
     />
   );
@@ -29,9 +42,9 @@ export function BaseLayers() {
   return (
     <>
       {/* La clave fuerza a recrear la capa al cambiar de proveedor. */}
-      <Tiles key={base.id} spec={base.tiles} zIndex={1} />
+      <Layer key={base.id} id={base.id} source={base.source} role="base" zIndex={1} />
       {OVERLAYS.filter((o) => overlays.includes(o.id)).map((o) => (
-        <Tiles key={o.id} spec={o.tiles} zIndex={o.zIndex} />
+        <Layer key={o.id} id={o.id} source={o.source} role="overlay" zIndex={o.zIndex} />
       ))}
     </>
   );

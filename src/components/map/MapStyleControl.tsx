@@ -1,10 +1,61 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { BASEMAPS, OVERLAYS, basemapById, previewUrl, type BaseMapGroup } from '@/domain/basemaps';
+import {
+  BASEMAPS,
+  OVERLAYS,
+  basemapById,
+  isArcGIS,
+  overlayById,
+  previewUrl,
+  type BaseMapGroup,
+  type OverlayGroup,
+} from '@/domain/basemaps';
+import { useLayerLoadingStore, type LayerLoadState } from '@/store/layerLoadingStore';
 import { useMapStyleStore } from '@/store/mapStyleStore';
 
-const GROUPS: BaseMapGroup[] = ['Imágenes', 'Relieve', 'Mapas'];
+const GROUPS: BaseMapGroup[] = ['Imágenes', 'Relieve', 'Mapas', 'Colombia (IGAC)'];
+const OVERLAY_GROUPS: { id: OverlayGroup; title: string; note?: string }[] = [
+  { id: 'General', title: 'Capas superpuestas' },
+  {
+    id: 'Colombia (IGAC y DANE)',
+    title: 'Colombia · IGAC y DANE',
+    note: 'Servicios oficiales: el servidor dibuja vías, ríos, quebradas y nombres. Son más lentos y se cargan al detener el mapa.',
+  },
+];
+
+/** Texto corto del estado de una capa dinámica. */
+function stateLabel(id: string, st: LayerLoadState | undefined): string | null {
+  if (st === 'loading') return 'Cargando…';
+  if (st === 'error') return 'Sin respuesta del servidor';
+  if (st === 'zoom') {
+    const src = overlayById(id)?.source ?? basemapById(id).source;
+    return isArcGIS(src) && src.minZoom != null ? `Acércate (zoom ≥ ${src.minZoom})` : null;
+  }
+  return null;
+}
+
+/** Aviso flotante mientras una capa del IGAC o el DANE está cargando o falló. */
+function LoadingBadge() {
+  const layers = useLayerLoadingStore((s) => s.layers);
+  const loading = Object.values(layers).filter((v) => v === 'loading').length;
+  const failed = Object.values(layers).filter((v) => v === 'error').length;
+  if (!loading && !failed) return null;
+  return (
+    <div
+      role="status"
+      className={`pointer-events-none absolute top-[124px] right-2.5 z-[650] rounded border px-2 py-1 font-mono text-[11px] ${
+        failed && !loading
+          ? 'border-danger bg-[rgba(16,22,31,.9)] text-danger'
+          : 'border-line bg-[rgba(16,22,31,.9)] text-accent'
+      }`}
+    >
+      {loading
+        ? `Cargando ${loading} capa${loading > 1 ? 's' : ''} IGAC/DANE…`
+        : 'El servidor IGAC/DANE no respondió'}
+    </div>
+  );
+}
 
 function LayersIcon() {
   return (
@@ -27,6 +78,7 @@ export function MapStyleControl() {
   const setBase = useMapStyleStore((s) => s.setBase);
   const toggleOverlay = useMapStyleStore((s) => s.toggleOverlay);
   const reset = useMapStyleStore((s) => s.reset);
+  const loadState = useLayerLoadingStore((s) => s.layers);
 
   // Cerrar con Esc o con un clic fuera del panel.
   useEffect(() => {
@@ -63,6 +115,7 @@ export function MapStyleControl() {
       >
         <LayersIcon />
       </button>
+      <LoadingBadge />
       {open ? (
         <div
           ref={panelRef}
@@ -96,7 +149,7 @@ export function MapStyleControl() {
                         {/* Miniatura: un mosaico real de Colombia del proveedor. */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={previewUrl(b.tiles)}
+                          src={previewUrl(b.source)}
                           alt=""
                           loading="lazy"
                           width={256}
@@ -110,26 +163,39 @@ export function MapStyleControl() {
                 </div>
               </fieldset>
             ))}
-            <fieldset className="m-0 flex flex-col gap-1.5 border-0 p-0">
-              <legend className="sec-h mb-2">Capas superpuestas</legend>
-              {OVERLAYS.map((o) => (
-                <label
-                  key={o.id}
-                  className="flex cursor-pointer items-start gap-2.5 rounded px-1 py-1 hover:bg-panel-2"
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 accent-accent"
-                    checked={overlays.includes(o.id)}
-                    onChange={() => toggleOverlay(o.id)}
-                  />
-                  <span className="flex flex-col">
-                    <span className="text-[13px]">{o.name}</span>
-                    <span className="text-[11px] text-muted">{o.description}</span>
-                  </span>
-                </label>
-              ))}
-            </fieldset>
+            {OVERLAY_GROUPS.map((g) => (
+              <fieldset key={g.id} className="m-0 flex flex-col gap-1.5 border-0 p-0">
+                <legend className="sec-h mb-2">{g.title}</legend>
+                {g.note ? <p className="note -mt-1 mb-1">{g.note}</p> : null}
+                {OVERLAYS.filter((o) => o.group === g.id).map((o) => {
+                  const st = overlays.includes(o.id) ? stateLabel(o.id, loadState[o.id]) : null;
+                  return (
+                    <label
+                      key={o.id}
+                      className="flex cursor-pointer items-start gap-2.5 rounded px-1 py-1 hover:bg-panel-2"
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 accent-accent"
+                        checked={overlays.includes(o.id)}
+                        onChange={() => toggleOverlay(o.id)}
+                      />
+                      <span className="flex flex-col">
+                        <span className="text-[13px]">{o.name}</span>
+                        <span className="text-[11px] text-muted">{o.description}</span>
+                        {st ? (
+                          <span
+                            className={`text-[11px] ${loadState[o.id] === 'error' ? 'text-danger' : 'text-accent'}`}
+                          >
+                            {st}
+                          </span>
+                        ) : null}
+                      </span>
+                    </label>
+                  );
+                })}
+              </fieldset>
+            ))}
           </div>
         </div>
       ) : null}

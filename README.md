@@ -74,12 +74,45 @@ Las pruebas cubren toda la lógica pura de `src/domain/` y `src/lib/`:
    (satélite, satélite nítido, terreno, relieve, físico, topográfico, National Geographic, calles,
    OpenStreetMap, oscuro o claro) y activar capas superpuestas: sombreado de relieve, carreteras y
    nombres y fronteras. La elección se guarda en el navegador y no forma parte del escenario.
+   El grupo **Colombia · IGAC y DANE** añade cartografía oficial (ver más abajo).
 7. **Archivo**: "Exportar .json" descarga el escenario; "Abrir…" importa uno (también los
    exportados desde el prototipo HTML).
 
 Atajos: <kbd>←</kbd> <kbd>→</kbd> fase · <kbd>Espacio</kbd> reproducir/pausar ·
 <kbd>Supr</kbd> borrar selección · <kbd>V</kbd> seleccionar · <kbd>Esc</kbd> soltar herramienta.
 No se activan mientras escribes en un campo (Esc solo quita el foco).
+
+## Cartografía oficial de Colombia (IGAC y DANE)
+
+En «Estilo del mapa» hay capas de servicios abiertos del Instituto Geográfico Agustín Codazzi y del
+DANE. El servidor dibuja las líneas **y los nombres**, así que se leen vías, ríos, quebradas,
+veredas y centros poblados sin descargar datos:
+
+| Capa                          | Fuente (ArcGIS Server)                                                 | Desde zoom |
+| ----------------------------- | ---------------------------------------------------------------------- | ---------- |
+| Ortoimagen IGAC (mapa base)   | IGAC `otros/ortocolombia` (2023)                                       | 6          |
+| Ríos y cuerpos de agua        | IGAC `Dato_Fundamental_Cuerpos_de_Agua_500k`                           | 7          |
+| Municipios y centros poblados | DANE `Serv_CapasNivelReferenciaVeredas_2025` (capas 305, 317, 319)     | 7          |
+| Cartografía 1:100.000         | IGAC `carto/carto100000colombia2019` (vías, ríos, quebradas, poblados) | 9          |
+| Veredas                       | DANE `Serv_CapasNivelReferenciaVeredas_2025` (capa 1)                  | 11         |
+| Curvas de nivel               | IGAC `Curvas_de_nivel_100k`                                            | 12         |
+
+Cómo funcionan:
+
+- Son servicios **dinámicos** (no tienen teselas): la app pide una sola imagen del tamaño de la
+  vista al endpoint `MapServer/export` cada vez que el mapa se detiene (`DynamicImageLayer`),
+  como hace `dynamicMapLayer` de esri-leaflet. Así los rótulos no salen cortados y se hacen pocas
+  peticiones.
+- Son **lentos** (de 1 a 30 s; el IGAC a veces más). Un aviso «Cargando capa IGAC/DANE…» aparece
+  bajo el botón de capas, y si no hay respuesta en 60 s se indica el fallo. La imagen anterior
+  se mantiene hasta que llega la nueva.
+- Por debajo de su zoom mínimo no se piden, para no saturar el servidor; el panel lo indica.
+- Los colores pálidos del IGAC se realzan y los textos del DANE llevan un halo oscuro (CSS) para
+  leerse sobre el satélite.
+- Los nombres geográficos puntuales del IGAC (`carto/nombresgeograficos`) existen, pero su
+  `export` solo dibuja símbolos sin texto y la consulta es muy lenta; por eso se usan las capas
+  anteriores, que ya traen los nombres.
+- WMS no está habilitado en estos servidores, por eso se usa la API REST de ArcGIS.
 
 ## Arquitectura
 
@@ -90,7 +123,8 @@ src/
     Editor.tsx         rejilla del editor (cliente)
     EditorLoader.tsx   carga el editor solo en cliente (next/dynamic, ssr: false)
     Header.tsx         nombre, estado de guardado, Nuevo / Abrir / Exportar
-    map/               TacticalMap, UnitMarker, TraceLayer, DraftLayer, MapHint
+    map/               TacticalMap, UnitMarker, TraceLayer, DraftLayer, MapHint,
+                       BaseLayers, DynamicImageLayer (IGAC/DANE), MapStyleControl
     palette/           Palette, GotoCoords
     inspector/         Inspector (fase o objeto seleccionado)
     timeline/          Timeline, Narration
@@ -103,6 +137,8 @@ src/
     coords.ts          parseCoords, formato DMS, límites de Colombia
     scenario.ts        crear, duplicar y modificar objetos
     sample.ts          escenario de ejemplo ficticio
+    basemaps.ts        catálogo de mapas base y capas (XYZ y ArcGIS)
+    arcgis.ts          URL de export ArcGIS, proyección Web Mercator
   store/editorStore.ts Zustand + persist
   hooks/               usePlayback (requestAnimationFrame), useKeyboardShortcuts
   lib/                 geocode (Nominatim), file (exportar/importar), repository, mapBridge
@@ -140,5 +176,6 @@ vercel --prod # producción
 ```
 
 La aplicación es estática y no tiene backend: cada navegador guarda su propio escenario.
-Los mosaicos del mapa vienen de Esri, OpenTopoMap y CARTO, y la búsqueda de lugares de
-Nominatim (OpenStreetMap); respeta sus condiciones de uso si el tráfico crece.
+Los mosaicos del mapa vienen de Esri, OpenTopoMap, OpenStreetMap y CARTO; la cartografía oficial,
+del IGAC y el DANE; y la búsqueda de lugares, de Nominatim (OpenStreetMap). Respeta sus
+condiciones de uso si el tráfico crece.

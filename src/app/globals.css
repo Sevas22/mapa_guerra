@@ -378,3 +378,14 @@
 .leaflet-layer.blend-multiply {
   mix-blend-mode: multiply;
 }
+
+/* Cartografía IGAC 1:100.000: sus colores son pálidos; se realzan para leerse sobre satélite. */
+.leaflet-image-layer.igac-boost {
+  filter: saturate(2.2) contrast(1.35) brightness(0.9);
+}
+
+/* Límites y nombres del DANE: halo oscuro para leerlos sobre satélite. */
+.leaflet-image-layer.map-halo {
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.8))
+    saturate(1.4) brightness(1.15);
+}

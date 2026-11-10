@@ -5,6 +5,8 @@ import {
   DEFAULT_OVERLAYS,
   OVERLAYS,
   basemapById,
+  isArcGIS,
+  overlayById,
   previewUrl,
   tileUrl,
   validOverlays,
@@ -18,12 +20,23 @@ describe('catálogo de capas', () => {
     expect(validOverlays(DEFAULT_OVERLAYS)).toEqual([...DEFAULT_OVERLAYS]);
   });
 
-  it('todas las URL usan https y tienen {z}/{x}/{y}', () => {
-    for (const { tiles } of [...BASEMAPS, ...OVERLAYS]) {
-      expect(tiles.url.startsWith('https://')).toBe(true);
-      for (const p of ['{z}', '{x}', '{y}']) expect(tiles.url).toContain(p);
-      expect(tiles.attribution.length).toBeGreaterThan(0);
+  it('todas las URL usan https; las XYZ tienen {z}/{x}/{y} y las ArcGIS apuntan a un MapServer', () => {
+    for (const { source } of [...BASEMAPS, ...OVERLAYS]) {
+      expect(source.url.startsWith('https://')).toBe(true);
+      expect(source.attribution.length).toBeGreaterThan(0);
+      if (isArcGIS(source)) expect(source.url).toMatch(/\/MapServer$/);
+      else for (const p of ['{z}', '{x}', '{y}']) expect(source.url).toContain(p);
     }
+  });
+
+  it('las capas oficiales de Colombia son dinámicas y tienen zoom mínimo', () => {
+    for (const id of ['igac-agua', 'igac-curvas', 'igac-100k', 'dane-veredas', 'dane-municipios']) {
+      const o = overlayById(id);
+      expect(o?.group).toBe('Colombia (IGAC y DANE)');
+      expect(o && isArcGIS(o.source) && o.source.minZoom).toBeGreaterThan(0);
+    }
+    expect(overlayById('dane-veredas')?.source).toMatchObject({ layers: 'show:1' });
+    expect(isArcGIS(basemapById('igac-orto').source)).toBe(true);
   });
 
   it('basemapById cae en el primero si el id no existe', () => {
@@ -50,6 +63,13 @@ describe('catálogo de capas', () => {
 
   it('previewUrl no pide un zoom mayor que el nativo', () => {
     const fisico = basemapById('fisico');
-    expect(previewUrl(fisico.tiles)).toContain('/tile/6/31/18');
+    expect(previewUrl(fisico.source)).toContain('/tile/6/31/18');
+  });
+
+  it('previewUrl de un servicio ArcGIS pide un export de la tesela de muestra', () => {
+    const url = previewUrl(basemapById('igac-orto').source);
+    expect(url).toContain('/ortocolombia/MapServer/export?');
+    expect(url).toContain('size=256%2C256');
+    expect(url).toContain('format=jpg');
   });
 });
