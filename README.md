@@ -114,6 +114,28 @@ Cómo funcionan:
   anteriores, que ya traen los nombres.
 - WMS no está habilitado en estos servidores, por eso se usa la API REST de ArcGIS.
 
+## Simbología
+
+Los símbolos siguen el manual **MFRE 1-02 «Términos y símbolos militares»** (Ejército Nacional,
+2017, de distribución pública) y la **graficación estandarizada DIVFE** (01MAR22):
+
+- **Identidad estándar** (tabla 3-1): amigo (rectángulo), hostil (rombo), neutral (cuadrado) y
+  desconocido (trébol), con los colores de la tabla 3-3. Se mantienen los valores del JSON del
+  prototipo (`azul`, `roja`, `verde`, `amarilla`).
+- **Fuerza o estructura** (`force`): EJC, ARC, FAC, Policía Nacional u organización
+  gubernamental para amigos; estructuras GAO para hostiles. Cambia el color de relleno.
+- **Íconos de unidades** de la tabla 4-1 y unidades DIVFE (FF.EE, GAULA, EV, contra narcotráfico,
+  contra minería ilegal, alta montaña, infantería de marina…) y unidades por nombre (CCOES, BR18…).
+- **Escalones** (tabla 4-9): equipo (Ø), escuadra, sección, pelotón, compañía, batallón,
+  regimiento, brigada, división, cuerpo y comando (++).
+- **Amplificadores**: estado planeado (marco punteado), fuerza de tarea (campo D), reforzada o
+  reducida (campo F), eficacia de combate (campo AL), modificador 1 en texto y movilidad (sector 2).
+- **Puntos DIVFE**: objetivo numerado, combate, campamento, IED, narcotráfico, captura, puntos de
+  control, seguridad, inserción, decisión y disloque, puestos de vigilancia, PCA, zonas de
+  desembarco y extracción, RP, IP, punto de coordinación, bases, aeropuerto, antena y lugar.
+
+Todos los campos nuevos son opcionales, así que los archivos del prototipo siguen abriéndose.
+
 ## Arquitectura
 
 ```

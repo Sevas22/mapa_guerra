@@ -1,5 +1,15 @@
 import { z } from 'zod';
 import { uid } from './id';
+import {
+  EFFECTIVENESS_IDS,
+  FACTION_IDS,
+  LINE_TYPES,
+  MOBILITY_IDS,
+  POINT_TYPES,
+  REINFORCEMENT_IDS,
+  STATUS_IDS,
+  UNIT_TYPES,
+} from './ids';
 import type { Scenario } from './types';
 
 /**
@@ -8,26 +18,7 @@ import type { Scenario } from './types';
  * bandos desconocidos por uno válido en lugar de rechazar el archivo.
  */
 
-export const FACTION_IDS = ['azul', 'roja', 'verde', 'amarilla'] as const;
-export const UNIT_TYPES = [
-  'infanteria',
-  'mecanizada',
-  'blindados',
-  'reconocimiento',
-  'artilleria',
-  'antiaerea',
-  'aviacion',
-  'naval',
-  'ingenieros',
-  'comunicaciones',
-  'sanidad',
-  'logistica',
-  'especiales',
-  'policia',
-  'pc',
-] as const;
-export const POINT_TYPES = ['objetivo', 'base', 'evento', 'control', 'punto', 'texto'] as const;
-export const LINE_TYPES = ['frente', 'eje', 'ruta', 'zona'] as const;
+export { FACTION_IDS, LINE_TYPES, POINT_TYPES, UNIT_TYPES } from './ids';
 
 const coord = z.number().finite();
 export const LatLngTupleSchema = z.tuple([coord, coord]);
@@ -54,8 +45,21 @@ const base = {
   end: z.number().int().min(0).nullable().default(null),
 };
 
+/** Campos opcionales del MFRE 1-02. Un valor no válido se descarta en vez de rechazar el archivo. */
+const symbolFields = {
+  force: z.string().optional().catch(undefined),
+  iconText: z.string().optional().catch(undefined),
+  mod1: z.string().optional().catch(undefined),
+  mobility: z.enum(MOBILITY_IDS).optional().catch(undefined),
+  taskForce: z.boolean().optional().catch(undefined),
+  reinforced: z.enum(REINFORCEMENT_IDS).optional().catch(undefined),
+  effectiveness: z.enum(EFFECTIVENESS_IDS).optional().catch(undefined),
+  status: z.enum(STATUS_IDS).optional().catch(undefined),
+};
+
 export const UnitObjectSchema = z.object({
   ...base,
+  ...symbolFields,
   kind: z.literal('unit'),
   type: z.enum(UNIT_TYPES).catch('infanteria'),
   echelon: z.string().default(''),
@@ -64,6 +68,7 @@ export const UnitObjectSchema = z.object({
 
 export const PointObjectSchema = z.object({
   ...base,
+  ...symbolFields,
   kind: z.literal('point'),
   type: z.enum(POINT_TYPES).catch('punto'),
   echelon: z.string().optional(),
@@ -72,6 +77,7 @@ export const PointObjectSchema = z.object({
 
 export const LineObjectSchema = z.object({
   ...base,
+  force: symbolFields.force,
   kind: z.literal('line'),
   type: z.enum(LINE_TYPES).catch('frente'),
   echelon: z.string().optional(),

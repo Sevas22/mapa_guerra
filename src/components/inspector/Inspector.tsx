@@ -1,8 +1,28 @@
 'use client';
 
-import { ECHELONS, FACTIONS, LINES, POINTS, UNITS, plainName } from '@/domain/catalog';
+import {
+  ECHELONS,
+  EFFECTIVENESS,
+  FACTIONS,
+  LINES,
+  MOBILITY,
+  POINTS,
+  REINFORCEMENT,
+  UNITS,
+  forcesFor,
+  plainName,
+  usesIconText,
+} from '@/domain/catalog';
 import { frameAt, hasOwnFrame, visibleAt } from '@/domain/timeline';
-import type { FactionId, MapObject, Phase } from '@/domain/types';
+import type {
+  Effectiveness,
+  FactionId,
+  MapObject,
+  Mobility,
+  Phase,
+  Reinforcement,
+  SymbolStatus,
+} from '@/domain/types';
 import { currentView } from '@/lib/mapBridge';
 import { selectSelected, useEditorStore } from '@/store/editorStore';
 
@@ -201,6 +221,137 @@ function PositionSection({ o }: { o: MapObject }) {
   );
 }
 
+/** Campos del MFRE 1-02: fuerza, texto del ícono, escalón y amplificadores. */
+function SymbolFieldsEditor({ o }: { o: MapObject }) {
+  const update = useEditorStore((s) => s.updateObject);
+  const forces = forcesFor(o.faction);
+  const textEditable = o.kind !== 'line' && usesIconText(o.kind, o.type);
+  const defaultText =
+    o.kind === 'unit'
+      ? UNITS[o.type]?.iconText
+      : o.kind === 'point'
+        ? POINTS[o.type]?.iconText
+        : '';
+  return (
+    <>
+      {forces.length && o.kind !== 'line' ? (
+        <label className="field">
+          {o.faction === 'azul' ? 'Fuerza' : 'Estructura'}
+          <select value={o.force ?? ''} onChange={(e) => update(o.id, { force: e.target.value })}>
+            <option value="">
+              {o.faction === 'azul' ? 'Amigo (sin fuerza)' : 'Hostil genérico'}
+            </option>
+            {forces.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {textEditable ? (
+        <label className="field">
+          Texto del símbolo
+          <input
+            type="text"
+            value={o.iconText ?? ''}
+            placeholder={defaultText || 'Número o sigla'}
+            onChange={(e) => update(o.id, { iconText: e.target.value })}
+          />
+        </label>
+      ) : null}
+      {o.kind === 'unit' ? (
+        <>
+          <div className="row">
+            <label className="field">
+              Escalón
+              <select value={o.echelon} onChange={(e) => update(o.id, { echelon: e.target.value })}>
+                {ECHELONS.map(([v, n]) => (
+                  <option key={v} value={v}>
+                    {v ? `${v} · ` : ''}
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              Estado
+              <select
+                value={o.status ?? 'presente'}
+                onChange={(e) => update(o.id, { status: e.target.value as SymbolStatus })}
+              >
+                <option value="presente">Presente</option>
+                <option value="planeado">Planeada (punteado)</option>
+              </select>
+            </label>
+          </div>
+          <div className="row">
+            <label className="field">
+              Modificador 1
+              <input
+                type="text"
+                value={o.mod1 ?? ''}
+                placeholder="ASLT, SAR, CBT…"
+                onChange={(e) => update(o.id, { mod1: e.target.value.toUpperCase() })}
+              />
+            </label>
+            <label className="field">
+              Movilidad
+              <select
+                value={o.mobility ?? ''}
+                onChange={(e) => update(o.id, { mobility: e.target.value as Mobility })}
+              >
+                {MOBILITY.map(([v, n]) => (
+                  <option key={v} value={v}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="row">
+            <label className="field">
+              Refuerzo
+              <select
+                value={o.reinforced ?? ''}
+                onChange={(e) => update(o.id, { reinforced: e.target.value as Reinforcement })}
+              >
+                {REINFORCEMENT.map(([v, n]) => (
+                  <option key={v} value={v}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              Eficacia de combate
+              <select
+                value={o.effectiveness ?? ''}
+                onChange={(e) => update(o.id, { effectiveness: e.target.value as Effectiveness })}
+              >
+                {EFFECTIVENESS.map(([v, n]) => (
+                  <option key={v} value={v}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-muted">
+            <input
+              type="checkbox"
+              className="accent-accent"
+              checked={!!o.taskForce}
+              onChange={(e) => update(o.id, { taskForce: e.target.checked })}
+            />
+            Fuerza de tarea o equipo (campo D)
+          </label>
+        </>
+      ) : null}
+    </>
+  );
+}
+
 function ObjectInspector({ o }: { o: MapObject }) {
   const phases = useEditorStore((s) => s.scenario.phases);
   const update = useEditorStore((s) => s.updateObject);
@@ -225,7 +376,7 @@ function ObjectInspector({ o }: { o: MapObject }) {
         </label>
         <div className="row">
           <label className="field">
-            Bando
+            Identidad
             <select
               value={o.faction}
               onChange={(e) => update(o.id, { faction: e.target.value as FactionId })}
@@ -251,19 +402,7 @@ function ObjectInspector({ o }: { o: MapObject }) {
             </select>
           </label>
         </div>
-        {o.kind === 'unit' ? (
-          <label className="field">
-            Escalón
-            <select value={o.echelon} onChange={(e) => update(o.id, { echelon: e.target.value })}>
-              {ECHELONS.map(([v, n]) => (
-                <option key={v} value={v}>
-                  {v ? `${v} · ` : ''}
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
+        <SymbolFieldsEditor o={o} />
         <label className="field">
           Notas
           <textarea

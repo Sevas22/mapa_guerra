@@ -60,6 +60,8 @@ export interface EditorState {
   playing: boolean;
   selectedId: string | null;
   faction: FactionId;
+  /** Fuerza propia o estructura GAO elegida en la paleta ('' = genérica). */
+  force: string;
   tool: Tool;
   /** Vértices del trazo en edición, o `null` si no se está dibujando. */
   draft: LatLngTuple[] | null;
@@ -70,6 +72,7 @@ export interface EditorState {
   goto: (i: number, fly?: boolean) => void;
   select: (id: string | null) => void;
   setFaction: (f: FactionId) => void;
+  setForce: (force: string) => void;
   setTool: (t: Tool) => void;
   mapClick: (ll: { lat: number; lng: number }, shiftKey: boolean) => void;
   objectClick: (id: string, ll: { lat: number; lng: number }, shiftKey: boolean) => void;
@@ -118,6 +121,7 @@ export const useEditorStore = create<EditorState>()(
         playing: false,
         selectedId: null,
         faction: 'azul',
+        force: 'ejc',
         tool: SELECT,
         draft: null,
         draftError: null,
@@ -133,7 +137,9 @@ export const useEditorStore = create<EditorState>()(
 
         select: (id) => set({ selectedId: id }),
 
-        setFaction: (faction) => set({ faction }),
+        setFaction: (faction) => set({ faction, force: faction === 'azul' ? 'ejc' : '' }),
+
+        setForce: (force) => set({ force }),
 
         setTool: (t) => {
           if (t.mode !== 'draw') set({ draft: null });
@@ -146,8 +152,9 @@ export const useEditorStore = create<EditorState>()(
           if (tool.mode === 'place') {
             const frame = { lat: round6(ll.lat), lng: round6(ll.lng) };
             if (tool.kind === 'unit')
-              addObjectAt({ kind: 'unit', type: tool.type, frame }, faction, current);
-            else addObjectAt({ kind: 'point', type: tool.type, frame }, faction, current);
+              addObjectAt({ kind: 'unit', type: tool.type, frame }, faction, current, get().force);
+            else
+              addObjectAt({ kind: 'point', type: tool.type, frame }, faction, current, get().force);
             if (!shiftKey) get().setTool(SELECT);
           } else if (tool.mode === 'draw') {
             set({ draft: [...(get().draft ?? []), [ll.lat, ll.lng]], draftError: null });
@@ -181,7 +188,12 @@ export const useEditorStore = create<EditorState>()(
             get().setTool(SELECT);
             get().setFrame(tool.redrawId, { pts: clean });
           } else {
-            addObjectAt({ kind: 'line', type: tool.type, frame: { pts: clean } }, faction, current);
+            addObjectAt(
+              { kind: 'line', type: tool.type, frame: { pts: clean } },
+              faction,
+              current,
+              get().force,
+            );
             get().setTool(SELECT);
           }
         },

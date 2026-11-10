@@ -1,5 +1,5 @@
 /** Operaciones puras sobre objetos del escenario. */
-import { POINTS } from './catalog';
+import { POINTS, forceById } from './catalog';
 import { uid } from './id';
 import type {
   FactionId,
@@ -9,6 +9,7 @@ import type {
   PointFrame,
   PointType,
   Scenario,
+  SymbolFields,
   UnitType,
 } from './types';
 
@@ -17,9 +18,25 @@ export type NewObjectSpec =
   | { kind: 'point'; type: PointType; frame: PointFrame }
   | { kind: 'line'; type: LineType; frame: LineFrame };
 
-/** Crea un objeto nuevo en la fase `phase`, igual que `addObject` del prototipo. */
-export function createObject(spec: NewObjectSpec, faction: FactionId, phase: number): MapObject {
-  const common = { id: uid(), faction, notes: '', start: phase, end: null };
+/**
+ * Crea un objeto nuevo en la fase `phase`, igual que `addObject` del prototipo.
+ * `force` (fuerza o estructura GAO) solo se guarda si corresponde a la identidad.
+ */
+export function createObject(
+  spec: NewObjectSpec,
+  faction: FactionId,
+  phase: number,
+  force?: string,
+): MapObject {
+  const f = forceById(force);
+  const common = {
+    id: uid(),
+    faction,
+    notes: '',
+    start: phase,
+    end: null,
+    ...(f && f.faction === faction ? { force: f.id } : {}),
+  };
   switch (spec.kind) {
     case 'unit':
       return {
@@ -93,7 +110,7 @@ export type ObjectPatch = Partial<
   Pick<MapObject, 'label' | 'notes' | 'faction' | 'start' | 'end'> & {
     type: MapObject['type'];
     echelon: string;
-  }
+  } & SymbolFields
 >;
 
 /** Aplica cambios de propiedades a un objeto. Ignora tipos que no correspondan a su `kind`. */
@@ -104,6 +121,14 @@ export function patchObject(s: Scenario, id: string, patch: ObjectPatch): Scenar
       if (o.id !== id) return o;
       const next = { ...o, ...patch } as MapObject;
       if (next.end != null && next.end < next.start) next.end = next.start;
+      // La fuerza o estructura debe pertenecer a la identidad del objeto.
+      const f = forceById(next.force);
+      if (next.force !== undefined && (!f || f.faction !== next.faction)) delete next.force;
+      // Los campos vacíos no se guardan, para que el JSON siga limpio.
+      for (const k of ['iconText', 'mod1', 'mobility', 'reinforced', 'effectiveness'] as const)
+        if (k in next && (next as SymbolFields)[k] === '') delete (next as SymbolFields)[k];
+      if ('taskForce' in next && !next.taskForce) delete next.taskForce;
+      if ('status' in next && next.status === 'presente') delete next.status;
       return next;
     }),
   };

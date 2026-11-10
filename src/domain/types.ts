@@ -4,28 +4,26 @@
  * desde el HTML se puedan importar sin cambios.
  */
 
-export type FactionId = 'azul' | 'roja' | 'verde' | 'amarilla';
+import type {
+  EFFECTIVENESS_IDS,
+  FACTION_IDS,
+  LINE_TYPES,
+  MOBILITY_IDS,
+  POINT_TYPES,
+  REINFORCEMENT_IDS,
+  STATUS_IDS,
+  UNIT_TYPES,
+} from './ids';
 
-export type UnitType =
-  | 'infanteria'
-  | 'mecanizada'
-  | 'blindados'
-  | 'reconocimiento'
-  | 'artilleria'
-  | 'antiaerea'
-  | 'aviacion'
-  | 'naval'
-  | 'ingenieros'
-  | 'comunicaciones'
-  | 'sanidad'
-  | 'logistica'
-  | 'especiales'
-  | 'policia'
-  | 'pc';
-
-export type PointType = 'objetivo' | 'base' | 'evento' | 'control' | 'punto' | 'texto';
-
-export type LineType = 'frente' | 'eje' | 'ruta' | 'zona';
+/** Identidad estándar: amigo (azul), hostil (roja), neutral (verde), desconocida (amarilla). */
+export type FactionId = (typeof FACTION_IDS)[number];
+export type UnitType = (typeof UNIT_TYPES)[number];
+export type PointType = (typeof POINT_TYPES)[number];
+export type LineType = (typeof LINE_TYPES)[number];
+export type Mobility = (typeof MOBILITY_IDS)[number];
+export type Reinforcement = (typeof REINFORCEMENT_IDS)[number];
+export type Effectiveness = (typeof EFFECTIVENESS_IDS)[number];
+export type SymbolStatus = (typeof STATUS_IDS)[number];
 
 /** [lat, lng] */
 export type LatLngTuple = [number, number];
@@ -55,14 +53,37 @@ interface BaseObject {
   end: number | null;
 }
 
-export interface UnitObject extends BaseObject {
+/**
+ * Información opcional del símbolo según el MFRE 1-02 (todos los campos son
+ * opcionales para seguir leyendo los archivos del prototipo).
+ */
+export interface SymbolFields {
+  /** Fuerza (EJC, ARC, FAC, PONAL…) o estructura GAO; define el color de relleno. */
+  force?: string;
+  /** Texto del ícono: nombre de la unidad, número de punto de control, ZD… */
+  iconText?: string;
+  /** Modificador del sector 1 en texto (ASLT, SAR, DRUG, CBT…). */
+  mod1?: string;
+  /** Modificador del sector 2: movilidad. */
+  mobility?: Mobility;
+  /** Amplificador de fuerza de tarea (campo D). */
+  taskForce?: boolean;
+  /** Reforzada (+), reducida (-) o ambas (±) (campo F). */
+  reinforced?: Reinforcement;
+  /** Eficacia de combate (campo AL). */
+  effectiveness?: Effectiveness;
+  /** Presente o planeada (marco punteado). */
+  status?: SymbolStatus;
+}
+
+export interface UnitObject extends BaseObject, SymbolFields {
   kind: 'unit';
   type: UnitType;
   echelon: string;
   frames: Frames<PointFrame>;
 }
 
-export interface PointObject extends BaseObject {
+export interface PointObject extends BaseObject, SymbolFields {
   kind: 'point';
   type: PointType;
   /** El prototipo guarda `echelon: ""` también en puntos; se conserva si viene. */
@@ -72,6 +93,7 @@ export interface PointObject extends BaseObject {
 
 export interface LineObject extends BaseObject {
   kind: 'line';
+  force?: string;
   type: LineType;
   echelon?: string;
   frames: Frames<LineFrame>;
