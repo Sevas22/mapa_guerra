@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa Táctico Colombia</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Consola de operaciones: paneles laterales fijos alrededor del mapa, línea de tiempo abajo */
+:root{
+  --bg:#10161F; --panel:#172030; --panel-2:#1E2A3D; --line:#2B3A52;
+  --fg:#DDE4EE; --muted:#8C9AB0; --accent:#D8B46A; --accent-ink:#1A1408;
+  --danger:#E5636A;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.45 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+#app{display:grid;height:100%;grid-template-columns:240px minmax(0,1fr) 292px;grid-template-rows:52px minmax(0,1fr) 118px;
+  grid-template-areas:"hd hd hd" "pal map ins" "tl tl tl"}
+header{grid-area:hd;display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{font:700 20px/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.brand span{color:var(--accent)}
+#scnName{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.hbtns{display:flex;gap:8px;align-items:center}
+#saveState{font:12px var(--f-mono);color:var(--muted);white-space:nowrap}
+
+.btn{background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:6px 11px;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.danger{color:var(--danger)}
+.btn.danger:hover{border-color:var(--danger)}
+.btn:disabled{opacity:.4;cursor:default}
+
+aside{background:var(--panel);overflow:auto;min-height:0}
+#palette{grid-area:pal;border-right:1px solid var(--line)}
+#inspector{grid-area:ins;border-left:1px solid var(--line)}
+.sec{padding:14px 14px 16px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.sec h2,.sec h3{margin:0;font:600 13px/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sec h3.big{font-size:18px;letter-spacing:.06em;color:var(--fg)}
+
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+input[type=text],input[type=number],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:72px}
+.row{display:flex;gap:8px}
+.row>*{flex:1;min-width:0}
+.mono{font-family:var(--f-mono);font-size:12px}
+.note{font-size:12px;color:var(--muted);margin:0}
+
+.fac{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.fac button{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font-size:12px;text-align:left}
+.fac button i{width:12px;height:12px;border-radius:2px;flex:none}
+.fac button[aria-pressed=true]{border-color:var(--accent);background:var(--panel-2)}
+
+.tools{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tool{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 2px 5px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;line-height:1.15;text-align:center;color:var(--muted);min-height:66px}
+.tool svg{flex:none}
+.tool:hover{color:var(--fg);border-color:var(--muted)}
+.tool[aria-pressed=true]{border-color:var(--accent);color:var(--fg);background:var(--panel-2)}
+#toolSel{justify-content:space-between}
+kbd{font:11px var(--f-mono);border:1px solid var(--line);border-radius:3px;padding:0 4px;color:var(--muted)}
+
+#gotoRes{display:flex;flex-direction:column;gap:2px}
+#gotoRes button{background:none;border:0;text-align:left;padding:5px 6px;border-radius:3px;font-size:12px;color:var(--fg)}
+#gotoRes button:hover{background:var(--panel-2)}
+#gotoMsg{font-size:12px;color:var(--muted);margin:0}
+#gotoMsg.warn{color:var(--accent)}
+
+main{grid-area:map;position:relative;min-height:0}
+#map{position:absolute;inset:0;background:#0b1018}
+#map.placing{cursor:crosshair}
+#narr{position:absolute;left:12px;top:12px;z-index:500;max-width:min(380px,calc(100% - 90px));background:rgba(16,22,31,.9);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:4px;padding:10px 12px;pointer-events:none}
+#narr .k{font:500 11px var(--f-mono);color:var(--accent);letter-spacing:.04em}
+#narr .t{font:700 20px/1.1 var(--f-display);letter-spacing:.03em;text-transform:uppercase;margin-top:3px;text-wrap:balance}
+#narr .d{font-size:13px;color:#C3CDDB;margin-top:5px}
+#hint{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);z-index:600;background:var(--accent);color:var(--accent-ink);border-radius:4px;padding:7px 8px 7px 12px;font-size:13px;font-weight:500;display:flex;gap:10px;align-items:center;max-width:calc(100% - 24px)}
+#hint .btn{background:rgba(0,0,0,.15);border-color:rgba(0,0,0,.25);color:var(--accent-ink);padding:3px 9px}
+#coords{position:absolute;right:10px;bottom:22px;z-index:500;background:rgba(16,22,31,.88);border:1px solid var(--line);border-radius:3px;padding:3px 8px;font:12px var(--f-mono);color:#C3CDDB;pointer-events:none;font-variant-numeric:tabular-nums}
+
+footer#timeline{grid-area:tl;background:var(--panel);border-top:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+.tlbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tlbar .sp{flex:1}
+.tlbar select{width:auto}
+.ico{width:34px;height:30px;justify-content:center;padding:0}
+#chips{display:flex;gap:0;overflow-x:auto;padding:10px 14px;flex:1;align-items:stretch}
+.chip{flex:none;display:flex;flex-direction:column;gap:2px;text-align:left;min-width:150px;max-width:220px;background:none;border:0;border-top:3px solid var(--line);padding:7px 14px 4px 0;position:relative}
+.chip::before{content:"";position:absolute;left:0;top:-7px;width:11px;height:11px;border-radius:50%;background:var(--panel);border:2px solid var(--line)}
+.chip .n{font:500 11px var(--f-mono);color:var(--muted);padding-left:16px}
+.chip .t{font:600 15px/1.15 var(--f-display);letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.chip.past{border-top-color:#6E5A33}
+.chip.past::before{background:#6E5A33;border-color:#6E5A33}
+.chip.on{border-top-color:var(--accent)}
+.chip.on::before{background:var(--accent);border-color:var(--accent)}
+.chip.on .t{color:var(--fg)}
+#progress{height:2px;background:var(--accent);width:0}
+
+/* símbolos en el mapa */
+.symwrap{background:none;border:0}
+.sym{position:relative}
+.sym svg{display:block;overflow:visible}
+.sym.sel svg{filter:drop-shadow(0 0 0 #fff) drop-shadow(0 0 4px #fff)}
+.lbl{position:absolute;transform:translateX(-50%);white-space:nowrap;font:600 11px/1.3 var(--f-body);color:#fff;background:rgba(10,14,20,.78);padding:1px 6px;border-radius:3px;pointer-events:none}
+.txt{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font:700 17px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 2px #000}
+.txt.sel{outline:1px dashed #fff;outline-offset:4px}
+.ahead{width:26px;height:26px}
+.leaflet-tooltip.ltip{background:rgba(10,14,20,.8);border:0;color:#fff;font:600 12px var(--f-body);box-shadow:none;padding:2px 7px}
+.leaflet-tooltip.ltip::before{display:none}
+.pulse{width:18px;height:18px;border-radius:50%;border:2px solid var(--accent);box-shadow:0 0 0 6px rgba(216,180,106,.25)}
+.leaflet-control-layers,.leaflet-bar a{background:var(--panel)!important;color:var(--fg)!important;border-color:var(--line)!important}
+.leaflet-control-layers{border:1px solid var(--line)!important;font-family:var(--f-body)}
+.leaflet-container{font-family:var(--f-body)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:900px){
+  html,body{height:auto}
+  #app{height:auto;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 62vh auto auto auto;grid-template-areas:"hd" "map" "tl" "ins" "pal"}
+  header{flex-wrap:wrap;padding-block:8px}
+  #palette,#inspector{border:0;border-top:1px solid var(--line)}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">Mapa táctico <span>·</span> CO</div>
+    <div id="scnName"></div>
+    <div class="hbtns">
+      <span id="saveState"></span>
+      <button class="btn" id="bNew">Nuevo</button>
+      <button class="btn" id="bOpen">Abrir…</button>
+      <button class="btn primary" id="bExport">Exportar .json</button>
+    </div>
+  </header>
+
+  <aside id="palette"></aside>
+
+  <main>
+    <div id="map"></div>
+    <div id="narr"></div>
+    <div id="hint" hidden></div>
+    <div id="coords">—</div>
+  </main>
+
+  <aside id="inspector"></aside>
+
+  <footer id="timeline">
+    <div id="progress"></div>
+    <div class="tlbar">
+      <button class="btn ico" id="bPrev" title="Fase anterior (←)">◀◀</button>
+      <button class="btn ico primary" id="bPlay" title="Reproducir (Espacio)">▶</button>
+      <button class="btn ico" id="bNext" title="Fase siguiente (→)">▶▶</button>
+      <label class="note" for="speed">Transición</label>
+      <select id="speed"><option value="1">1 s</option><option value="2">2 s</option><option value="4">4 s</option><option value="7">7 s</option></select>
+      <span class="sp"></span>
+      <button class="btn" id="bAddPhase">+ Fase después de esta</button>
+      <button class="btn danger" id="bDelPhase">Eliminar fase</button>
+    </div>
+    <div id="chips"></div>
+  </footer>
+</div>
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+"use strict";
+/* ====================== Catálogos ====================== */
+const $ = s => document.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const STORE_KEY = "mapa-tactico-co-v1";
+
+const FACTIONS = {
+  azul:     {name:"Azul · propia",   fill:"#9FD8FF", vivid:"#4DA8FF", shape:"rect"},
+  roja:     {name:"Roja · hostil",   fill:"#FF9C9C", vivid:"#FF5252", shape:"diamond"},
+  verde:    {name:"Verde · neutral", fill:"#AAF0B6", vivid:"#3DDC84", shape:"square"},
+  amarilla: {name:"Desconocida",     fill:"#FFF08A", vivid:"#FFD23F", shape:"circle"}
+};
+const ECHELONS = [["","Sin escalón"],["•","Escuadra"],["••","Sección"],["•••","Pelotón"],["I","Compañía"],["II","Batallón"],["III","Regimiento"],["X","Brigada"],["XX","División"]];
+
+const cx = b => b.x + b.w/2, cy = b => b.y + b.h/2;
+const txt = (b, s) => `<text x="${cx(b)}" y="${cy(b) + (b.w < 20 ? 2.6 : 3.4)}" text-anchor="middle" font-size="${b.w < 20 ? 6.6 : 9}" font-weight="700" fill="#111" stroke="none" font-family="IBM Plex Sans,sans-serif">${s}</text>`;
+const UNITS = {
+  infanteria:     {name:"Infantería",        g:b=>`<path d="M${b.x} ${b.y}L${b.x+b.w} ${b.y+b.h}M${b.x} ${b.y+b.h}L${b.x+b.w} ${b.y}"/>`},
+  mecanizada:     {name:"Mecanizada",        g:b=>UNITS.infanteria.g(b)+UNITS.blindados.g(b)},
+  blindados:      {name:"Blindados",         g:b=>`<ellipse cx="${cx(b)}" cy="${cy(b)}" rx="${b.w*.34}" ry="${b.h*.27}"/>`},
+  reconocimiento: {name:"Reconoci­miento",   g:b=>`<path d="M${b.x} ${b.y+b.h}L${b.x+b.w} ${b.y}"/>`},
+  artilleria:     {name:"Artillería",        g:b=>`<circle cx="${cx(b)}" cy="${cy(b)}" r="3.6" fill="#111"/>`},
+  antiaerea:      {name:"Antiaérea",         g:b=>`<path d="M${b.x+b.w*.18} ${b.y+b.h}Q${cx(b)} ${b.y+b.h*.05} ${b.x+b.w*.82} ${b.y+b.h}"/>`},
+  aviacion:       {name:"Aviación",          g:b=>`<path d="M${b.x+b.w*.2} ${b.y+b.h*.25}L${b.x+b.w*.8} ${b.y+b.h*.75}L${b.x+b.w*.8} ${b.y+b.h*.25}L${b.x+b.w*.2} ${b.y+b.h*.75}Z" fill="#111"/>`},
+  naval:          {name:"Fluvial / naval",   g:b=>`<path d="M${cx(b)} ${b.y+b.h*.18}V${b.y+b.h*.8}M${b.x+b.w*.3} ${b.y+b.h*.55}Q${cx(b)} ${b.y+b.h*1.02} ${b.x+b.w*.7} ${b.y+b.h*.55}M${b.x+b.w*.4} ${b.y+b.h*.32}H${b.x+b.w*.6}"/>`},
+  ingenieros:     {name:"Ingenieros",        g:b=>`<path d="M${b.x+b.w*.25} ${b.y+b.h*.68}V${b.y+b.h*.32}H${b.x+b.w*.75}V${b.y+b.h*.68}M${cx(b)} ${b.y+b.h*.32}V${b.y+b.h*.6}"/>`},
+  comunicaciones: {name:"Comunica­ciones",   g:b=>`<path d="M${b.x+b.w*.15} ${b.y+b.h*.3}L${b.x+b.w*.47} ${b.y+b.h*.64}L${b.x+b.w*.53} ${b.y+b.h*.36}L${b.x+b.w*.85} ${b.y+b.h*.7}"/>`},
+  sanidad:        {name:"Sanidad",           g:b=>`<path d="M${cx(b)} ${b.y+b.h*.2}V${b.y+b.h*.8}M${b.x+b.w*.32} ${cy(b)}H${b.x+b.w*.68}" stroke-width="2.6"/>`},
+  logistica:      {name:"Logística",         g:b=>txt(b,"LOG")},
+  especiales:     {name:"Fuerzas especiales",g:b=>txt(b,"FE")},
+  policia:        {name:"Policía",           g:b=>txt(b,"POL")},
+  pc:             {name:"Puesto de mando",   g:b=>txt(b,"PC")}
+};
+
+function starPts(cxv, cyv, R, r){ const a=[]; for(let i=0;i<16;i++){ const rr=i%2?r:R, t=(i*22.5-90)*Math.PI/180; a.push((cxv+rr*Math.cos(t)).toFixed(1)+","+(cyv+rr*Math.sin(t)).toFixed(1)); } return a.join(" "); }
+const POINTS = {
+  objetivo:{name:"Objetivo", size:[34,34], anchor:[17,17], label:"OBJ",
+    svg:c=>`<svg viewBox="0 0 34 34" width="34" height="34"><circle cx="17" cy="17" r="11" fill="rgba(8,12,18,.45)" stroke="${c}" stroke-width="2.6"/><path d="M17 2V10M17 24V32M2 17H10M24 17H32" stroke="${c}" stroke-width="2.2"/><circle cx="17" cy="17" r="2.4" fill="${c}"/></svg>`},
+  base:{name:"Base / puesto", size:[30,32], anchor:[7,30], label:"",
+    svg:c=>`<svg viewBox="0 0 30 32" width="30" height="32"><path d="M7 31V3" stroke="#0b0f15" stroke-width="4"/><path d="M7 31V3" stroke="#fff" stroke-width="2"/><path d="M8 4L27 10L8 16Z" fill="${c}" stroke="#0b0f15" stroke-width="1.4"/></svg>`},
+  evento:{name:"Combate / evento", size:[34,34], anchor:[17,17], label:"",
+    svg:c=>`<svg viewBox="0 0 34 34" width="34" height="34"><polygon points="${starPts(17,17,16,7)}" fill="${c}" stroke="#0b0f15" stroke-width="1.4"/></svg>`},
+  control:{name:"Punto de control", size:[28,26], anchor:[14,16], label:"PC-1",
+    svg:c=>`<svg viewBox="0 0 28 26" width="28" height="26"><polygon points="14,2 26,24 2,24" fill="rgba(8,12,18,.45)" stroke="${c}" stroke-width="2.6"/></svg>`},
+  punto:{name:"Punto", size:[18,18], anchor:[9,9], label:"",
+    svg:c=>`<svg viewBox="0 0 18 18" width="18" height="18"><circle cx="9" cy="9" r="6" fill="${c}" stroke="#fff" stroke-width="2"/></svg>`},
+  texto:{name:"Rótulo de texto", size:[0,0], anchor:[0,0], label:"Rótulo", svg:()=>""}
+};
+const LINES = {
+  frente:{name:"Línea de frente", min:2},
+  eje:   {name:"Eje de avance",   min:2},
+  ruta:  {name:"Ruta",            min:2},
+  zona:  {name:"Zona / área",     min:3}
+};
+const PLACES = [
+  ["Bogotá",4.7110,-74.0721],["Medellín",6.2442,-75.5812],["Cali",3.4516,-76.5320],["Barranquilla",10.9685,-74.7813],
+  ["Cartagena",10.3910,-75.4794],["Santa Marta",11.2408,-74.1990],["Bucaramanga",7.1193,-73.1227],["Cúcuta",7.8939,-72.5078],
+  ["Villavicencio",4.1420,-73.6266],["Pasto",1.2136,-77.2811],["Popayán",2.4448,-76.6147],["Quibdó",5.6947,-76.6611],
+  ["Arauca",7.0847,-70.7591],["San José del Guaviare",2.5729,-72.6459],["Florencia",1.6144,-75.6062],["Leticia",-4.2153,-69.9406],
+  ["Ibagué",4.4389,-75.2322],["Neiva",2.9273,-75.2819],["Montería",8.7479,-75.8814],["Riohacha",11.5444,-72.9072]
+];
+
+/* ====================== Estado ====================== */
+function blankScenario(){
+  return {v:1, name:"Escenario sin título", speed:2, phases:[{id:uid(), title:"Fase 1", date:"", desc:"", view:null}], objects:[]};
+}
+function sampleScenario(){
+  const P = (title, date, desc) => ({id:uid(), title, date, desc, view:{c:[4.268,-74.635], z:12}});
+  const u = (type, faction, echelon, label, frames, start=0, end=null) => ({id:uid(), kind:"unit", type, faction, echelon, label, notes:"", start, end, frames});
+  const pt = (type, faction, label, frames, start=0, end=null) => ({id:uid(), kind:"point", type, faction, label, notes:"", start, end, frames});
+  const ln = (type, faction, label, frames, start=0, end=null) => ({id:uid(), kind:"line", type, faction, label, notes:"", start, end, frames});
+  return {
+    v:1, name:"Ejercicio Cordillera (ejemplo ficticio)", speed:2,
+    phases:[
+      P("Despliegue inicial","D-1 · 05:00","Escenario de ejemplo. La Fuerza Azul ocupa posiciones de partida al norte; la Fuerza Roja defiende la colina del Objetivo Alfa."),
+      P("Avance sobre el objetivo","D-1 · 09:30","Dos ejes de avance convergen sobre Alfa. Contacto con la posición roja a las 08:50."),
+      P("Consolidación","D-1 · 15:00","Alfa asegurado. La Fuerza Roja se repliega al sureste y la línea de frente se desplaza.")
+    ],
+    objects:[
+      u("infanteria","azul","II","BI-1",{0:{lat:4.300,lng:-74.660},1:{lat:4.262,lng:-74.622},2:{lat:4.240,lng:-74.603}}),
+      u("blindados","azul","I","Cía B",{0:{lat:4.306,lng:-74.628},1:{lat:4.272,lng:-74.601},2:{lat:4.247,lng:-74.588}}),
+      u("artilleria","azul","I","Bat. 3",{0:{lat:4.318,lng:-74.700}}),
+      u("pc","azul","II","PC Azul",{0:{lat:4.322,lng:-74.678},2:{lat:4.290,lng:-74.650}}),
+      u("infanteria","roja","I","Roja 1",{0:{lat:4.236,lng:-74.600},1:{lat:4.228,lng:-74.592},2:{lat:4.205,lng:-74.565}}),
+      u("reconocimiento","roja","•••","Roja R",{0:{lat:4.258,lng:-74.645}},0,0),
+      pt("objetivo","azul","OBJ Alfa",{0:{lat:4.236,lng:-74.598}}),
+      pt("evento","amarilla","Contacto 08:50",{1:{lat:4.250,lng:-74.612}},1,1),
+      ln("eje","azul","",{0:{pts:[[4.296,-74.656],[4.272,-74.636],[4.247,-74.606]]}},0,1),
+      ln("eje","azul","",{0:{pts:[[4.302,-74.624],[4.278,-74.607],[4.252,-74.592]]}},0,1),
+      ln("frente","roja","Línea de contacto",{0:{pts:[[4.262,-74.690],[4.270,-74.640],[4.268,-74.585]]},1:{pts:[[4.248,-74.690],[4.255,-74.640],[4.252,-74.585]]},2:{pts:[[4.222,-74.690],[4.226,-74.640],[4.222,-74.585]]}}),
+      ln("zona","roja","Zona defensiva",{0:{pts:[[4.250,-74.622],[4.250,-74.580],[4.220,-74.575],[4.218,-74.615]]}},0,1)
+    ]
+  };
+}
+function load(){
+  try { const s = localStorage.getItem(STORE_KEY); if(s){ const d = JSON.parse(s); if(valid(d)) return d; } } catch(e){}
+  return null;
+}
+function valid(d){ return d && Array.isArray(d.phases) && d.phases.length && Array.isArray(d.objects); }
+let saveTimer = null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); $("#saveState").textContent = "Guardado " + new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"}); }
+    catch(e){ $("#saveState").textContent = "Sin autoguardado"; }
+  }, 300);
+}
+
+let S = load() || sampleScenario();
+let cur = 0, sel = null, faction = "azul", playing = false;
+let tool = {mode:"select"}, draft = null, gotoLL = null, gotoMarker = null;
+const layers = new Map();
+
+const frameAt = (o, p) => {
+  const keys = Object.keys(o.frames).map(Number).sort((a,b)=>a-b);
+  let k = keys[0]; for(const x of keys) if(x <= p) k = x;
+  return o.frames[k];
+};
+const visibleAt = (o, p) => p >= o.start && (o.end == null || p <= o.end);
+const objById = id => S.objects.find(o => o.id === id);
+
+/* ====================== Mapa ====================== */
+const map = L.map("map", {zoomControl:false, worldCopyJump:true, minZoom:4}).setView([4.3,-73.5], 6);
+L.control.zoom({position:"topright"}).addTo(map);
+L.control.scale({imperial:false, position:"bottomleft"}).addTo(map);
+const esriSat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxZoom:19, attribution:"Imágenes © Esri, Maxar, Earthstar Geographics"});
+const esriLbl = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {maxZoom:19, attribution:"Etiquetas © Esri"});
+const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {maxZoom:17, attribution:"© OpenTopoMap (CC-BY-SA), © OpenStreetMap"});
+const calles = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {maxZoom:19, subdomains:"abcd", attribution:"© OpenStreetMap, © CARTO"});
+const satGroup = L.layerGroup([esriSat, esriLbl]).addTo(map);
+L.control.layers({"Satélite":satGroup, "Topográfico":topo, "Calles":calles}, {}, {position:"topright"}).addTo(map);
+
+/* ====================== Símbolos ====================== */
+function unitSVG(type, fac, echelon){
+  const f = FACTIONS[fac]; let frame, b;
+  switch(f.shape){
+    case "rect":    frame=`<rect x="8" y="14" width="40" height="26"/>`; b={x:8,y:14,w:40,h:26}; break;
+    case "diamond": frame=`<polygon points="28,11 44,27 28,43 12,27"/>`; b={x:20,y:20,w:16,h:14}; break;
+    case "square":  frame=`<rect x="15" y="14" width="26" height="26"/>`; b={x:15,y:14,w:26,h:26}; break;
+    default:        frame=`<circle cx="28" cy="27" r="14"/>`; b={x:18.5,y:20,w:19,h:14};
+  }
+  const inner = (UNITS[type] || UNITS.infanteria).g(b);
+  const ech = echelon ? `<text x="28" y="9" text-anchor="middle" font-size="10" font-weight="700" fill="#fff" stroke="#000" stroke-width="2.6" paint-order="stroke" font-family="IBM Plex Sans,sans-serif">${esc(echelon)}</text>` : "";
+  return `<svg viewBox="0 0 56 46" width="56" height="46">${ech}<g fill="${f.fill}" stroke="#111" stroke-width="1.6">${frame}</g><g fill="none" stroke="#111" stroke-width="1.5">${inner}</g></svg>`;
+}
+function iconFor(o){
+  const s = o.id === sel;
+  if(o.kind === "unit"){
+    return L.divIcon({className:"symwrap", iconSize:[56,46], iconAnchor:[28,27],
+      html:`<div class="sym${s?" sel":""}" style="width:56px;height:46px">${unitSVG(o.type,o.faction,o.echelon)}${o.label?`<span class="lbl" style="left:28px;top:44px">${esc(o.label)}</span>`:""}</div>`});
+  }
+  const P = POINTS[o.type] || POINTS.punto, c = FACTIONS[o.faction].vivid;
+  if(o.type === "texto"){
+    return L.divIcon({className:"symwrap", iconSize:[0,0], iconAnchor:[0,0],
+      html:`<div class="txt${s?" sel":""}" style="color:${c}">${esc(o.label || "Rótulo")}</div>`});
+  }
+  return L.divIcon({className:"symwrap", iconSize:P.size, iconAnchor:P.anchor,
+    html:`<div class="sym${s?" sel":""}" style="width:${P.size[0]}px;height:${P.size[1]}px">${P.svg(c)}${o.label?`<span class="lbl" style="left:${P.anchor[0]}px;top:${P.size[1]+1}px">${esc(o.label)}</span>`:""}</div>`});
+}
+function lineStyle(o, op){
+  const c = FACTIONS[o.faction].vivid, s = o.id === sel;
+  switch(o.type){
+    case "eje":  return {color:c, weight:s?10:7, opacity:.85*op, dashArray:null, lineCap:"butt", lineJoin:"round"};
+    case "ruta": return {color:c, weight:s?5:3, opacity:op, dashArray:"9 7", lineCap:"round"};
+    case "zona": return {color:c, weight:s?4:2, opacity:op, dashArray:"7 5", fillColor:c, fillOpacity:.17*op};
+    default:     return {color:c, weight:s?6:4, opacity:op, dashArray:null, lineCap:"round", lineJoin:"round"};
+  }
+}
+const headIcon = () => L.divIcon({className:"symwrap", iconSize:[26,26], iconAnchor:[13,13],
+  html:`<div class="ahead"><svg viewBox="0 0 26 26" width="26" height="26"><polygon points="1,1 25,13 1,25" fill="currentColor" stroke="rgba(0,0,0,.45)"/></svg></div>`});
+
+/* ====================== Render ====================== */
+function build(o){
+  if(o.kind === "line"){
+    const pts = frameAt(o, cur).pts;
+    const opts = Object.assign(lineStyle(o,1), {bubblingMouseEvents:false});
+    const main = o.type === "zona" ? L.polygon(pts, opts) : L.polyline(pts, opts);
+    main.on("click", e => onObjClick(o.id, e));
+    if(o.label) main.bindTooltip(esc(o.label), {permanent:true, direction:"center", className:"ltip", interactive:false});
+    const head = o.type === "eje" ? L.marker(pts[pts.length-1], {icon:headIcon(), interactive:false, keyboard:false}) : null;
+    return {kind:"line", main, head};
+  }
+  const f = frameAt(o, cur);
+  const m = L.marker([f.lat, f.lng], {icon:iconFor(o), draggable:true, keyboard:false, riseOnHover:true, zIndexOffset:o.kind==="unit"?100:0});
+  m.on("click", e => onObjClick(o.id, e));
+  m.on("dragend", () => { const ll = m.getLatLng(); setFrame(o.id, {lat:+ll.lat.toFixed(6), lng:+ll.lng.toFixed(6)}); });
+  return {kind:"pt", main:m};
+}
+function showLayer(l){
+  if(!map.hasLayer(l.main)){ l.main.addTo(map); if(l.kind==="pt") applyDrag(l); }
+  if(l.head && !map.hasLayer(l.head)) l.head.addTo(map);
+}
+function hideLayer(l){ l.main.remove(); if(l.head) l.head.remove(); }
+function applyDrag(l){
+  if(l.kind !== "pt" || !l.main.dragging) return;
+  (tool.mode === "select" && !playing) ? l.main.dragging.enable() : l.main.dragging.disable();
+}
+const syncDrag = () => layers.forEach(applyDrag);
+
+function render(f = cur){
+  const last = S.phases.length - 1;
+  const p = Math.min(Math.floor(f), last), t = +(f - p).toFixed(4), q = Math.min(p + 1, last);
+  const seen = new Set();
+  for(const o of S.objects){
+    seen.add(o.id);
+    const va = visibleAt(o, p), vb = t > 0 ? visibleAt(o, q) : va;
+    const op = t === 0 ? (va ? 1 : 0) : (va && vb ? 1 : va ? 1 - t : vb ? t : 0);
+    let l = layers.get(o.id);
+    if(op <= 0.001){ if(l) hideLayer(l); continue; }
+    if(!l){ l = build(o); layers.set(o.id, l); }
+    const A = frameAt(o, va ? p : q), B = (t > 0 && vb) ? frameAt(o, q) : A;
+    showLayer(l);
+    if(o.kind === "line"){
+      let pts;
+      if(t === 0 || A === B) pts = A.pts;
+      else if(A.pts.length === B.pts.length) pts = A.pts.map((a,i) => [a[0] + (B.pts[i][0]-a[0])*t, a[1] + (B.pts[i][1]-a[1])*t]);
+      else pts = t < .5 ? A.pts : B.pts;
+      l.main.setLatLngs(pts); l.main.setStyle(lineStyle(o, op));
+      if(l.head) updHead(l, pts, FACTIONS[o.faction].vivid, op);
+    } else {
+      l.main.setLatLng([A.lat + (B.lat-A.lat)*t, A.lng + (B.lng-A.lng)*t]);
+      l.main.setOpacity(op);
+    }
+  }
+  for(const [id, l] of layers) if(!seen.has(id)){ hideLayer(l); layers.delete(id); }
+}
+function updHead(l, pts, color, op){
+  const a = pts[pts.length-2], b = pts[pts.length-1];
+  const p1 = map.project(a, 12), p2 = map.project(b, 12);
+  const deg = Math.atan2(p2.y-p1.y, p2.x-p1.x) * 180 / Math.PI;
+  l.head.setLatLng(b); l.head.setOpacity(.9*op);
+  const el = l.head.getElement();
+  if(el){ el.firstChild.style.transform = `rotate(${deg}deg)`; el.firstChild.style.color = color; }
+}
+function rebuild(id){ const l = layers.get(id); if(l){ hideLayer(l); layers.delete(id); } }
+function clearLayers(){ layers.forEach(hideLayer); layers.clear(); }
+
+/* ====================== Acciones ====================== */
+function select(id){
+  const prev = sel; sel = id;
+  if(prev) rebuild(prev);
+  if(id) rebuild(id);
+  render(); renderInspector();
+}
+function setFrame(id, val){
+  const o = objById(id); if(!o) return;
+  o.frames[cur] = val; save(); render(); if(sel === id) renderInspector();
+}
+function addObject(kind, type, data){
+  const lbl = kind === "point" ? POINTS[type].label : "";
+  const o = {id:uid(), kind, type, faction, echelon: kind === "unit" ? "I" : "", label:lbl, notes:"", start:cur, end:null,
+    frames:{[cur]: data}};
+  S.objects.push(o); save(); select(o.id);
+  return o;
+}
+function deleteSel(){
+  if(!sel) return;
+  rebuild(sel); S.objects = S.objects.filter(o => o.id !== sel); sel = null;
+  save(); render(); renderInspector();
+}
+function duplicateSel(){
+  const o = objById(sel); if(!o) return;
+  const c = JSON.parse(JSON.stringify(o)); c.id = uid();
+  for(const k in c.frames){ const f = c.frames[k]; if(f.pts) f.pts = f.pts.map(p => [p[0]-.004, p[1]+.004]); else { f.lat -= .004; f.lng += .004; } }
+  S.objects.push(c); save(); select(c.id);
+}
+function onObjClick(id, e){
+  if(tool.mode === "select" && !playing) select(id);
+  else if(tool.mode !== "select") handleMapClick(e.latlng, e.originalEvent);
+}
+
+/* --- herramientas --- */
+function setTool(t){
+  if(draft && t.mode !== "draw") cancelDraft();
+  tool = t;
+  map.getContainer().classList.toggle("placing", t.mode !== "select");
+  t.mode === "draw" ? map.doubleClickZoom.disable() : map.doubleClickZoom.enable();
+  syncDrag(); renderPaletteState(); updateHint();
+}
+function handleMapClick(ll, ev){
+  if(playing) return;
+  if(tool.mode === "place"){
+    addObject(tool.kind, tool.type, {lat:+ll.lat.toFixed(6), lng:+ll.lng.toFixed(6)});
+    if(!(ev && ev.shiftKey)) setTool({mode:"select"});
+  } else if(tool.mode === "draw"){
+    if(!draft){
+      draft = {pts:[],
+        layer:L.polyline([], {color:"#fff", weight:2.5, dashArray:"5 5", interactive:false}).addTo(map),
+        rub:L.polyline([], {color:"#fff", weight:1.5, dashArray:"2 6", interactive:false}).addTo(map)};
+    }
+    draft.pts.push([ll.lat, ll.lng]); draft.layer.setLatLngs(draft.pts); updateHint();
+  } else if(sel) select(null);
+}
+function cancelDraft(){ if(!draft) return; draft.layer.remove(); draft.rub.remove(); draft = null; updateHint(); }
+function finishDraft(){
+  if(!draft) return;
+  const clean = [];
+  for(const p of draft.pts){
+    const last = clean[clean.length-1];
+    if(last){ const a = map.latLngToContainerPoint(last), b = map.latLngToContainerPoint(p); if(a.distanceTo(b) < 5) continue; }
+    clean.push([+p[0].toFixed(6), +p[1].toFixed(6)]);
+  }
+  const need = LINES[tool.type].min;
+  if(clean.length < need){ updateHint(`Necesitas al menos ${need} puntos.`); return; }
+  const redraw = tool.redrawId;
+  draft.layer.remove(); draft.rub.remove(); draft = null;
+  if(redraw){ setTool({mode:"select"}); setFrame(redraw, {pts:clean}); }
+  else { addObject("line", tool.type, {pts:clean}); setTool({mode:"select"}); }
+}
+function updateHint(err){
+  const h = $("#hint");
+  if(tool.mode === "select"){ h.hidden = true; return; }
+  let msg;
+  if(tool.mode === "place"){
+    const n = tool.kind === "unit" ? UNITS[tool.type].name : POINTS[tool.type].name;
+    msg = `Clic en el mapa para colocar <b>${n}</b>. Mantén Shift para colocar varios.`;
+  } else {
+    const n = draft ? draft.pts.length : 0;
+    msg = err || (tool.redrawId ? "Redibujando en esta fase. " : "") + `Clic para añadir vértices (${n}). Doble clic o Enter para terminar.`;
+  }
+  h.innerHTML = `<span>${msg}</span>${tool.mode==="draw"?'<button class="btn" id="hDone">Terminar</button>':""}<button class="btn" id="hEsc">Cancelar</button>`;
+  h.hidden = false;
+  const d = $("#hDone"); if(d) d.onclick = finishDraft;
+  $("#hEsc").onclick = () => setTool({mode:"select"});
+}
+L.DomEvent.disableClickPropagation($("#hint"));
+
+map.on("click", e => handleMapClick(e.latlng, e.originalEvent));
+map.on("dblclick", () => { if(tool.mode === "draw") finishDraft(); });
+map.on("mousemove", e => {
+  const {lat, lng} = e.latlng;
+  $("#coords").textContent = `${dms(lat,"N","S")} ${dms(lng,"E","O")} · ${lat.toFixed(5)}, ${lng.toFixed(5)} · z${map.getZoom()}`;
+  if(draft && draft.pts.length) draft.rub.setLatLngs([draft.pts[draft.pts.length-1], [lat,lng]]);
+});
+function dms(v, pos, neg){
+  const a = Math.abs(v), d = Math.floor(a), m = Math.floor((a-d)*60), s = Math.round(((a-d)*60-m)*60);
+  return `${d}°${String(m).padStart(2,"0")}′${String(s).padStart(2,"0")}″${v>=0?pos:neg}`;
+}
+
+/* --- fases --- */
+function goto(i, fly = true){
+  stop();
+  cur = Math.max(0, Math.min(i, S.phases.length-1));
+  render(); renderTimeline(); renderInspector(); renderNarr();
+  const v = S.phases[cur].view;
+  if(fly && v) map.flyTo(v.c, v.z, {duration:.8});
+}
+function addPhase(){
+  const c = cur;
+  S.phases.splice(c+1, 0, {id:uid(), title:`Fase ${S.phases.length+1}`, date:"", desc:"", view:S.phases[c].view});
+  for(const o of S.objects){
+    const nf = {}; for(const [k,v] of Object.entries(o.frames)){ const n = +k; nf[n > c ? n+1 : n] = v; } o.frames = nf;
+    if(o.start > c) o.start++;
+    if(o.end != null && o.end > c) o.end++;
+  }
+  save(); goto(c+1, false);
+}
+function deletePhase(){
+  if(S.phases.length <= 1) return;
+  const k = cur;
+  if(!confirm(`¿Eliminar la fase ${k+1} «${S.phases[k].title}»? Los objetos que solo existen en ella también se borran.`)) return;
+  S.phases.splice(k, 1);
+  S.objects = S.objects.filter(o => !(o.start === k && o.end === k));
+  for(const o of S.objects){
+    const nf = {};
+    for(const [kk,v] of Object.entries(o.frames)){
+      const n = +kk;
+      if(n < k) nf[n] = v;
+      else if(n > k) nf[n-1] = v;
+      else if(!((k+1) in o.frames)) nf[k] = v;
+    }
+    o.frames = nf;
+    if(o.start > k) o.start--;
+    if(o.end != null){ if(o.end > k) o.end--; else if(o.end === k) o.end = k-1; }
+  }
+  sel = null; clearLayers(); save(); goto(Math.min(k, S.phases.length-1), false);
+}
+
+/* --- reproducción --- */
+let raf = null;
+const ease = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
+function play(){
+  if(S.phases.length < 2) return;
+  if(cur >= S.phases.length-1) goto(0);
+  if(draft) cancelDraft();
+  if(tool.mode !== "select") setTool({mode:"select"});
+  if(sel) select(null);
+  playing = true; syncDrag(); $("#bPlay").textContent = "❚❚";
+  const dur = S.speed * 1000, hold = 900;
+  let from = cur, t0 = null, flown = false;
+  const step = ts => {
+    if(!playing) return;
+    if(t0 == null) t0 = ts;
+    const t = (ts - t0 - hold) / dur;
+    if(t > 0 && !flown){ flown = true; const v = S.phases[from+1].view; if(v) map.flyTo(v.c, v.z, {duration:S.speed}); }
+    if(t >= 1){
+      from++; cur = from; t0 = ts; flown = false;
+      render(cur); renderTimeline(); renderNarr(); $("#progress").style.width = "0";
+      if(from >= S.phases.length-1){ stop(); renderInspector(); return; }
+    } else {
+      const tt = Math.max(0, t);
+      render(from + ease(tt));
+      $("#progress").style.width = (tt*100) + "%";
+    }
+    raf = requestAnimationFrame(step);
+  };
+  raf = requestAnimationFrame(step);
+}
+function stop(){
+  if(!playing) return;
+  playing = false; cancelAnimationFrame(raf); syncDrag();
+  $("#bPlay").textContent = "▶"; $("#progress").style.width = "0";
+  render(cur);
+}
+
+/* ====================== Paneles ====================== */
+function renderNarr(){
+  const p = S.phases[cur];
+  $("#narr").innerHTML = `<div class="k">FASE ${cur+1}/${S.phases.length}${p.date ? " · " + esc(p.date) : ""}</div><div class="t">${esc(p.title)}</div>${p.desc ? `<div class="d">${esc(p.desc)}</div>` : ""}`;
+  $("#scnName").textContent = S.name;
+}
+function renderTimeline(){
+  $("#chips").innerHTML = S.phases.map((p,i) =>
+    `<button class="chip${i===cur?" on":i<cur?" past":""}" data-i="${i}"><span class="n">${String(i+1).padStart(2,"0")}${p.date?" · "+esc(p.date):""}</span><span class="t">${esc(p.title)}</span></button>`).join("");
+  $("#chips").querySelectorAll(".chip").forEach(b => b.onclick = () => goto(+b.dataset.i));
+  const on = $("#chips .on"); if(on) on.scrollIntoView({block:"nearest", inline:"nearest"});
+  $("#bDelPhase").disabled = S.phases.length <= 1;
+  $("#speed").value = String(S.speed);
+}
+
+function previewLine(type, c){
+  const st = {frente:`stroke="${c}" stroke-width="4"`, eje:`stroke="${c}" stroke-width="6"`, ruta:`stroke="${c}" stroke-width="3" stroke-dasharray="6 4"`, zona:""}[type];
+  if(type === "zona") return `<svg width="44" height="34" viewBox="0 0 44 34"><polygon points="6,8 38,4 40,28 8,30" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2" stroke-dasharray="5 3"/></svg>`;
+  const head = type === "eje" ? `<polygon points="30,8 42,14 33,22" fill="${c}"/>` : "";
+  return `<svg width="44" height="34" viewBox="0 0 44 34"><path d="M3 28Q14 10 34 15" fill="none" ${st}/>${head}</svg>`;
+}
+function renderPalette(){
+  const c = FACTIONS[faction].vivid;
+  $("#palette").innerHTML = `
+  <section class="sec">
+    <h2>Ir a coordenadas</h2>
+    <input type="text" id="gotoIn" class="mono" placeholder="4.7110, -74.0721 · 4°42′40″N 74°04′20″O · o un lugar" aria-label="Coordenadas o lugar">
+    <div class="row"><button class="btn primary" id="gotoBtn">Ir</button><button class="btn" id="gotoAdd" disabled>Marcar punto</button></div>
+    <select id="gotoCity" aria-label="Ciudades"><option value="">Ciudades de Colombia…</option>${PLACES.map((p,i)=>`<option value="${i}">${p[0]}</option>`).join("")}</select>
+    <p id="gotoMsg"></p>
+    <div id="gotoRes"></div>
+  </section>
+  <section class="sec">
+    <h2>Bando</h2>
+    <div class="fac">${Object.entries(FACTIONS).map(([k,f])=>`<button data-f="${k}" aria-pressed="${k===faction}"><i style="background:${f.vivid}"></i>${f.name}</button>`).join("")}</div>
+  </section>
+  <section class="sec">
+    <button class="btn" id="toolSel">Seleccionar y mover <kbd>V</kbd></button>
+  </section>
+  <section class="sec"><h2>Unidades</h2><div class="tools">
+    ${Object.entries(UNITS).map(([k,u])=>`<button class="tool" data-kind="unit" data-type="${k}" title="${u.name}">${unitSVG(k,faction,"").replace('width="56" height="46"','width="44" height="36"')}<span>${u.name}</span></button>`).join("")}
+  </div></section>
+  <section class="sec"><h2>Puntos</h2><div class="tools">
+    ${Object.entries(POINTS).map(([k,p])=>`<button class="tool" data-kind="point" data-type="${k}" title="${p.name}">${k==="texto"?`<svg width="44" height="34" viewBox="0 0 44 34"><text x="22" y="23" text-anchor="middle" font-size="17" font-weight="700" fill="${c}" font-family="Barlow Condensed,sans-serif">ABC</text></svg>`:`<span style="height:34px;display:grid;place-items:center">${p.svg(c)}</span>`}<span>${p.name}</span></button>`).join("")}
+  </div></section>
+  <section class="sec"><h2>Trazos</h2><div class="tools">
+    ${Object.entries(LINES).map(([k,l])=>`<button class="tool" data-kind="line" data-type="${k}" title="${l.name}">${previewLine(k,c)}<span>${l.name}</span></button>`).join("")}
+  </div></section>`;
+
+  $("#palette").querySelectorAll(".fac button").forEach(b => b.onclick = () => { faction = b.dataset.f; renderPalette(); });
+  $("#toolSel").onclick = () => setTool({mode:"select"});
+  $("#palette").querySelectorAll(".tool").forEach(b => b.onclick = () => {
+    const kind = b.dataset.kind, type = b.dataset.type;
+    if(tool.mode !== "select" && tool.type === type && tool.kind === kind) return setTool({mode:"select"});
+    setTool(kind === "line" ? {mode:"draw", kind, type} : {mode:"place", kind, type});
+  });
+  $("#gotoBtn").onclick = doGoto;
+  $("#gotoIn").onkeydown = e => { if(e.key === "Enter") doGoto(); };
+  $("#gotoCity").onchange = e => { const p = PLACES[+e.target.value]; if(p){ $("#gotoIn").value = `${p[1]}, ${p[2]}`; flyToPoint(p[1], p[2], 12, p[0]); } };
+  $("#gotoAdd").onclick = () => {
+    if(!gotoLL) return;
+    addObject("point", "punto", {lat:gotoLL.lat, lng:gotoLL.lng});
+    const o = objById(sel); o.label = gotoLL.name || ""; rebuild(o.id); save(); render(); renderInspector();
+  };
+  renderPaletteState();
+}
+function renderPaletteState(){
+  $("#palette").querySelectorAll(".tool").forEach(b =>
+    b.setAttribute("aria-pressed", String(tool.mode !== "select" && b.dataset.type === tool.type && b.dataset.kind === tool.kind)));
+  const ts = $("#toolSel"); if(ts) ts.classList.toggle("primary", tool.mode === "select");
+}
+
+/* --- coordenadas --- */
+function parseCoords(s){
+  s = s.trim().replace(/\s+/g, " ");
+  let m = s.match(/^(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)$/);
+  if(m) return {lat:+m[1], lng:+m[2]};
+  const re = /(\d+(?:\.\d+)?)\s*[°º ]\s*(?:(\d+(?:\.\d+)?)\s*['′ ]\s*)?(?:(\d+(?:\.\d+)?)\s*["″]?\s*)?([NSEWOnsewo])/g;
+  const parts = [...s.matchAll(re)];
+  if(parts.length === 2){
+    const v = p => { let d = +p[1] + (+p[2]||0)/60 + (+p[3]||0)/3600; return /[SWOswo]/.test(p[4]) ? -d : d; };
+    const a = parts[0], b = parts[1];
+    const aLat = /[NSns]/.test(a[4]);
+    return aLat ? {lat:v(a), lng:v(b)} : {lat:v(b), lng:v(a)};
+  }
+  return null;
+}
+function flyToPoint(lat, lng, z, name){
+  const msg = $("#gotoMsg");
+  const inCo = lat > -4.4 && lat < 13.6 && lng > -82 && lng < -66.7;
+  msg.className = inCo ? "" : "warn";
+  msg.textContent = inCo ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : "Esa coordenada está fuera de Colombia.";
+  gotoLL = {lat:+lat.toFixed(6), lng:+lng.toFixed(6), name:name || ""};
+  $("#gotoAdd").disabled = false;
+  if(gotoMarker) gotoMarker.remove();
+  gotoMarker = L.marker([lat,lng], {icon:L.divIcon({className:"symwrap", iconSize:[18,18], iconAnchor:[9,9], html:'<div class="pulse"></div>'}), interactive:false}).addTo(map);
+  map.flyTo([lat,lng], z || 13, {duration:1.2});
+}
+async function doGoto(){
+  const q = $("#gotoIn").value; if(!q.trim()) return;
+  $("#gotoRes").innerHTML = "";
+  const c = parseCoords(q);
+  if(c){
+    if(Math.abs(c.lat) > 90 || Math.abs(c.lng) > 180){ $("#gotoMsg").className = "warn"; $("#gotoMsg").textContent = "Latitud entre -90 y 90, longitud entre -180 y 180."; return; }
+    return flyToPoint(c.lat, c.lng, 13);
+  }
+  $("#gotoMsg").className = ""; $("#gotoMsg").textContent = "Buscando lugar…";
+  try {
+    const r = await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=6&countrycodes=co&accept-language=es&q=" + encodeURIComponent(q));
+    const d = await r.json();
+    if(!d.length){ $("#gotoMsg").textContent = "No encontré ese lugar en Colombia. Prueba con coordenadas."; return; }
+    $("#gotoMsg").textContent = `${d.length} resultado(s):`;
+    $("#gotoRes").innerHTML = d.map((x,i) => `<button data-i="${i}">${esc(x.display_name)}</button>`).join("");
+    $("#gotoRes").querySelectorAll("button").forEach(b => b.onclick = () => {
+      const x = d[+b.dataset.i]; flyToPoint(+x.lat, +x.lon, 13, x.display_name.split(",")[0]); $("#gotoRes").innerHTML = "";
+    });
+  } catch(e){
+    $("#gotoMsg").className = "warn"; $("#gotoMsg").textContent = "Sin conexión al buscador de lugares. Usa coordenadas.";
+  }
+}
+
+/* --- inspector --- */
+function phaseOpts(from, selected){
+  let h = ""; for(let i = from; i < S.phases.length; i++) h += `<option value="${i}"${i===selected?" selected":""}>${i+1} · ${esc(S.phases[i].title)}</option>`; return h;
+}
+function renderInspector(){
+  const ins = $("#inspector");
+  const o = objById(sel);
+  if(!o){
+    const p = S.phases[cur];
+    const nVis = S.objects.filter(x => visibleAt(x, cur)).length;
+    ins.innerHTML = `
+    <section class="sec">
+      <h3 class="big">Fase ${cur+1} de ${S.phases.length}</h3>
+      <label class="f">Título<input type="text" id="phTitle" value="${esc(p.title)}"></label>
+      <label class="f">Fecha / hora<input type="text" id="phDate" value="${esc(p.date)}" placeholder="12 mar 1998 06:00 · Día 3 · H+2"></label>
+      <label class="f">Narración<textarea id="phDesc" placeholder="Qué ocurre en esta fase">${esc(p.desc)}</textarea></label>
+      <div class="f note">Vista de cámara: ${p.view ? `<span class="mono">${p.view.c[0].toFixed(3)}, ${p.view.c[1].toFixed(3)} · z${p.view.z}</span>` : "sin guardar"}</div>
+      <div class="row"><button class="btn" id="phView">Guardar vista actual</button><button class="btn" id="phViewClr"${p.view?"":" disabled"}>Quitar</button></div>
+      <p class="note">${nVis} objeto(s) visibles en esta fase. Al reproducir, la cámara viaja a la vista guardada de cada fase.</p>
+    </section>
+    <section class="sec">
+      <h2>Escenario</h2>
+      <label class="f">Nombre<input type="text" id="scName" value="${esc(S.name)}"></label>
+    </section>
+    <section class="sec">
+      <h2>Cómo funciona</h2>
+      <p class="note">Elige una fase abajo y coloca o arrastra objetos. Mover un objeto guarda su posición para esa fase; las fases siguientes la heredan hasta que lo vuelvas a mover. Al reproducir, el mapa anima el paso entre posiciones.</p>
+      <p class="note"><kbd>←</kbd> <kbd>→</kbd> cambiar fase · <kbd>Espacio</kbd> reproducir · <kbd>Supr</kbd> borrar · <kbd>Esc</kbd> soltar herramienta</p>
+    </section>`;
+    $("#phTitle").oninput = e => { p.title = e.target.value; save(); renderTimeline(); renderNarr(); };
+    $("#phDate").oninput = e => { p.date = e.target.value; save(); renderTimeline(); renderNarr(); };
+    $("#phDesc").oninput = e => { p.desc = e.target.value; save(); renderNarr(); };
+    $("#scName").oninput = e => { S.name = e.target.value; save(); renderNarr(); };
+    $("#phView").onclick = () => { const c = map.getCenter(); p.view = {c:[+c.lat.toFixed(5), +c.lng.toFixed(5)], z:map.getZoom()}; save(); renderInspector(); };
+    $("#phViewClr").onclick = () => { p.view = null; save(); renderInspector(); };
+    return;
+  }
+
+  const kindName = o.kind === "unit" ? "Unidad" : o.kind === "point" ? "Punto" : "Trazo";
+  const types = o.kind === "unit" ? UNITS : o.kind === "point" ? POINTS : LINES;
+  const vis = visibleAt(o, cur);
+  const f = frameAt(o, cur);
+  const ownFrame = cur in o.frames;
+  let pos = "";
+  if(o.kind !== "line"){
+    pos = vis ? `<div class="row"><label class="f">Latitud<input type="number" step="0.0001" id="oLat" class="mono" value="${f.lat}"></label><label class="f">Longitud<input type="number" step="0.0001" id="oLng" class="mono" value="${f.lng}"></label></div>
+      <p class="note">${ownFrame ? `Posición propia en la fase ${cur+1}.` : "Hereda la posición de una fase anterior. Arrástralo para moverlo en esta fase."}</p>`
+      : `<p class="note">No es visible en esta fase.</p>`;
+  } else {
+    pos = `<p class="note">${f.pts.length} vértices · ${ownFrame ? `trazado propio en la fase ${cur+1}` : "heredado de una fase anterior"}.</p>
+      <button class="btn" id="oRedraw"${vis?"":" disabled"}>Redibujar en esta fase</button>`;
+  }
+  ins.innerHTML = `
+  <section class="sec">
+    <h3 class="big">${kindName}</h3>
+    <label class="f">Etiqueta<input type="text" id="oLabel" value="${esc(o.label)}" placeholder="BI-1, OBJ Alfa…"></label>
+    <div class="row">
+      <label class="f">Bando<select id="oFac">${Object.entries(FACTIONS).map(([k,x])=>`<option value="${k}"${k===o.faction?" selected":""}>${x.name}</option>`).join("")}</select></label>
+      <label class="f">Tipo<select id="oType">${Object.entries(types).map(([k,x])=>`<option value="${k}"${k===o.type?" selected":""}>${x.name.replace("­","")}</option>`).join("")}</select></label>
+    </div>
+    ${o.kind === "unit" ? `<label class="f">Escalón<select id="oEch">${ECHELONS.map(([v,n])=>`<option value="${v}"${v===o.echelon?" selected":""}>${v?v+" · ":""}${n}</option>`).join("")}</select></label>` : ""}
+    <label class="f">Notas<textarea id="oNotes" placeholder="Efectivos, misión, fuente…">${esc(o.notes)}</textarea></label>
+  </section>
+  <section class="sec">
+    <h2>En la línea de tiempo</h2>
+    <div class="row">
+      <label class="f">Aparece en<select id="oStart">${phaseOpts(0, o.start)}</select></label>
+      <label class="f">Visible hasta<select id="oEnd"><option value="">El final</option>${phaseOpts(o.start, o.end)}</select></label>
+    </div>
+    ${pos}
+  </section>
+  <section class="sec">
+    <div class="row"><button class="btn" id="oDup">Duplicar</button><button class="btn danger" id="oDel">Eliminar</button></div>
+    <button class="btn" id="oDone">Listo</button>
+  </section>`;
+
+  const upd = (fn, rerenderIns) => { fn(); rebuild(o.id); save(); render(); if(rerenderIns) renderInspector(); };
+  $("#oLabel").oninput = e => upd(() => o.label = e.target.value);
+  $("#oFac").onchange = e => upd(() => o.faction = e.target.value);
+  $("#oType").onchange = e => upd(() => o.type = e.target.value);
+  if($("#oEch")) $("#oEch").onchange = e => upd(() => o.echelon = e.target.value);
+  $("#oNotes").oninput = e => { o.notes = e.target.value; save(); };
+  $("#oStart").onchange = e => upd(() => { o.start = +e.target.value; if(o.end != null && o.end < o.start) o.end = o.start; }, true);
+  $("#oEnd").onchange = e => upd(() => o.end = e.target.value === "" ? null : +e.target.value, true);
+  if($("#oLat")){
+    const setPos = () => { const la = parseFloat($("#oLat").value), lo = parseFloat($("#oLng").value); if(isFinite(la) && isFinite(lo)){ o.frames[cur] = {lat:la, lng:lo}; save(); render(); } };
+    $("#oLat").onchange = setPos; $("#oLng").onchange = setPos;
+  }
+  if($("#oRedraw")) $("#oRedraw").onclick = () => setTool({mode:"draw", kind:"line", type:o.type, redrawId:o.id});
+  $("#oDup").onclick = duplicateSel;
+  $("#oDel").onclick = deleteSel;
+  $("#oDone").onclick = () => select(null);
+}
+
+/* ====================== Archivo ====================== */
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(S, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = (S.name || "escenario").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+$("#bExport").onclick = exportJSON;
+$("#bOpen").onclick = () => $("#fileIn").click();
+$("#fileIn").onchange = e => {
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if(!valid(d)) throw new Error();
+      S = d; S.speed = S.speed || 2; sel = null; clearLayers(); save(); goto(0);
+      if(!S.phases[0].view) fitAll();
+    } catch(err){ alert("Ese archivo no es un escenario válido de Mapa Táctico."); }
+  };
+  r.readAsText(file); e.target.value = "";
+};
+$("#bNew").onclick = () => {
+  if(!confirm("¿Empezar un escenario nuevo? Exporta antes el actual si quieres conservarlo.")) return;
+  S = blankScenario(); sel = null; clearLayers(); save(); goto(0); map.flyTo([4.3,-73.5], 6);
+};
+function fitAll(){
+  const b = L.latLngBounds([]);
+  for(const o of S.objects) for(const f of Object.values(o.frames)) (f.pts || [[f.lat,f.lng]]).forEach(p => b.extend(p));
+  if(b.isValid()) map.fitBounds(b.pad(.2));
+}
+
+/* ====================== Arranque ====================== */
+$("#bPlay").onclick = () => playing ? stop() : play();
+$("#bPrev").onclick = () => goto(cur - 1);
+$("#bNext").onclick = () => goto(cur + 1);
+$("#bAddPhase").onclick = addPhase;
+$("#bDelPhase").onclick = deletePhase;
+$("#speed").onchange = e => { S.speed = +e.target.value; save(); };
+
+document.addEventListener("keydown", e => {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+  if(e.key === "Escape"){ cancelDraft(); setTool({mode:"select"}); if(typing) document.activeElement.blur(); return; }
+  if(typing) return;
+  if(e.key === "Enter" && draft) finishDraft();
+  else if((e.key === "Delete" || e.key === "Backspace") && sel){ e.preventDefault(); deleteSel(); }
+  else if(e.key === "ArrowRight"){ e.preventDefault(); goto(cur + 1); }
+  else if(e.key === "ArrowLeft"){ e.preventDefault(); goto(cur - 1); }
+  else if(e.key === " "){ e.preventDefault(); playing ? stop() : play(); }
+  else if(e.key.toLowerCase() === "v") setTool({mode:"select"});
+});
+
+renderPalette();
+goto(0, false);
+if(S.phases[0].view) map.setView(S.phases[0].view.c, S.phases[0].view.z); else fitAll();
+</script>
+</body>
+</html>
