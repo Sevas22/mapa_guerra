@@ -2,22 +2,15 @@
 
 import L from 'leaflet';
 import { useCallback, useEffect, useRef } from 'react';
-import {
-  LayerGroup,
-  LayersControl,
-  MapContainer,
-  ScaleControl,
-  TileLayer,
-  ZoomControl,
-  useMap,
-  useMapEvents,
-} from 'react-leaflet';
+import { MapContainer, ScaleControl, ZoomControl, useMap, useMapEvents } from 'react-leaflet';
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from '@/domain/catalog';
 import { formatCursor } from '@/domain/coords';
 import { PULSE_ICON } from '@/domain/symbols';
 import { fitScenario, setMap } from '@/lib/mapBridge';
 import { useEditorStore } from '@/store/editorStore';
+import { BaseLayers } from './BaseLayers';
 import { DraftLayer } from './DraftLayer';
+import { MapStyleControl } from './MapStyleControl';
 import { TraceLayer } from './TraceLayer';
 import { UnitMarker } from './UnitMarker';
 
@@ -108,42 +101,13 @@ export default function TacticalMap() {
         center={DEFAULT_CENTER}
         zoom={DEFAULT_ZOOM}
         minZoom={4}
+        maxZoom={19}
         zoomControl={false}
         worldCopyJump
         className="absolute inset-0 bg-mapbg"
       >
         <ZoomControl position="topright" />
-        <LayersControl position="topright">
-          <LayersControl.BaseLayer checked name="Satélite">
-            <LayerGroup>
-              <TileLayer
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                maxZoom={19}
-                attribution="Imágenes © Esri, Maxar, Earthstar Geographics"
-              />
-              <TileLayer
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
-                maxZoom={19}
-                attribution="Etiquetas © Esri"
-              />
-            </LayerGroup>
-          </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="Topográfico">
-            <TileLayer
-              url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-              maxZoom={17}
-              attribution="© OpenTopoMap (CC-BY-SA), © OpenStreetMap"
-            />
-          </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="Calles">
-            <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-              maxZoom={19}
-              subdomains="abcd"
-              attribution="© OpenStreetMap, © CARTO"
-            />
-          </LayersControl.BaseLayer>
-        </LayersControl>
+        <BaseLayers />
         <ScaleControl imperial={false} position="bottomleft" />
         <MapSetup />
         <MapInteraction onCursor={onCursor} />
@@ -151,6 +115,7 @@ export default function TacticalMap() {
         <DraftLayer />
         <GotoMarker />
       </MapContainer>
+      <MapStyleControl />
       <div
         ref={readout}
         className="pointer-events-none absolute right-2.5 bottom-[22px] z-[500] rounded-[3px] border border-line bg-[rgba(16,22,31,.88)] px-2 py-[3px] font-mono text-xs text-soft tabular-nums"

@@ -70,7 +70,11 @@ Las pruebas cubren toda la lógica pura de `src/domain/` y `src/lib/`:
 4. **Fases**: mover un objeto guarda su posición en la fase actual; las siguientes la heredan.
    Desde el inspector puedes fijar en qué fases aparece y guardar la vista de cámara de cada fase.
 5. **Reproducir**: ▶ o Espacio. Pausa de 900 ms en cada fase y transición de 1, 2, 4 o 7 s.
-6. **Archivo**: "Exportar .json" descarga el escenario; "Abrir…" importa uno (también los
+6. **Estilo del mapa**: el botón de capas (bajo el zoom) abre un panel para elegir el mapa base
+   (satélite, satélite nítido, terreno, relieve, físico, topográfico, National Geographic, calles,
+   OpenStreetMap, oscuro o claro) y activar capas superpuestas: sombreado de relieve, carreteras y
+   nombres y fronteras. La elección se guarda en el navegador y no forma parte del escenario.
+7. **Archivo**: "Exportar .json" descarga el escenario; "Abrir…" importa uno (también los
    exportados desde el prototipo HTML).
 
 Atajos: <kbd>←</kbd> <kbd>→</kbd> fase · <kbd>Espacio</kbd> reproducir/pausar ·

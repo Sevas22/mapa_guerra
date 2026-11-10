@@ -373,3 +373,8 @@
     border-top: 1px solid var(--color-line) !important;
   }
 }
+
+/* Sombreado de relieve: se multiplica sobre el mapa base en vez de taparlo. */
+.leaflet-layer.blend-multiply {
+  mix-blend-mode: multiply;
+}
