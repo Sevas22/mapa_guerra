@@ -144,6 +144,19 @@ Los símbolos siguen el manual **MFRE 1-02 «Términos y símbolos militares»**
 
 Todos los campos nuevos son opcionales, así que los archivos del prototipo siguen abriéndose.
 
+## Operaciones: fichas, tiempos y multimedia
+
+- **Imágenes y videos** en cada fase (se ven junto a la narración y se abren a pantalla completa)
+  y en cada objeto (el símbolo muestra un clip). Se guardan en el navegador (IndexedDB) y al
+  exportar se incrustan en el JSON, así que el archivo es autónomo.
+- **Ficha de unidad**: efectivos (PAX), medios y misión. Los PAX aparecen junto a la etiqueta y el
+  inspector de la fase resume unidades y efectivos por identidad.
+- **Distancia y tiempo** de rutas y ejes según el medio (a pie, motorizado, fluvial, aéreo) y la
+  velocidad; en los trayectos aéreos también en millas náuticas.
+- **Ejemplos**: el menú «Ejemplos…» abre el Ejercicio Cordillera o el **Ejercicio Halcón**, una
+  inserción aérea de entrenamiento totalmente ficticia (OPFOR simulado) que usa todas estas
+  funciones.
+
 ## Arquitectura
 
 ```

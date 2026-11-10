@@ -9,7 +9,9 @@ import type {
   PointFrame,
   PointType,
   Scenario,
+  MediaRef,
   SymbolFields,
+  Travel,
   UnitType,
 } from './types';
 
@@ -110,6 +112,8 @@ export type ObjectPatch = Partial<
   Pick<MapObject, 'label' | 'notes' | 'faction' | 'start' | 'end'> & {
     type: MapObject['type'];
     echelon: string;
+    media: MediaRef[];
+    travel: Travel;
   } & SymbolFields
 >;
 
@@ -129,6 +133,14 @@ export function patchObject(s: Scenario, id: string, patch: ObjectPatch): Scenar
         if (k in next && (next as SymbolFields)[k] === '') delete (next as SymbolFields)[k];
       if ('taskForce' in next && !next.taskForce) delete next.taskForce;
       if ('status' in next && next.status === 'presente') delete next.status;
+      if (next.media && next.media.length === 0) delete next.media;
+      if ('card' in next) {
+        const c = (next as SymbolFields).card;
+        const empty = !c || (c.pax == null && !c.medios && !c.mision);
+        if (empty) delete (next as SymbolFields).card;
+      }
+      if ('travel' in next && !(next as { travel?: Travel }).travel)
+        delete (next as { travel?: Travel }).travel;
       return next;
     }),
   };

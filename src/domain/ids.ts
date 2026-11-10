@@ -120,3 +120,15 @@ export const EFFECTIVENESS_IDS = ['', 'FO', 'BO', 'EO', 'NO'] as const;
 
 /** Presente (marco continuo) o planeada (marco punteado), tabla 3-1. */
 export const STATUS_IDS = ['presente', 'planeado'] as const;
+
+/** Tipos de adjunto multimedia. */
+export const MEDIA_KINDS = ['image', 'video'] as const;
+
+/** Medio de desplazamiento de una ruta o eje (para distancia y tiempo estimado). */
+export const TRAVEL_MODES = [
+  'pie',
+  'motorizado-pavimentado',
+  'motorizado-destapado',
+  'fluvial',
+  'aereo',
+] as const;

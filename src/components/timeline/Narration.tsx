@@ -1,8 +1,9 @@
 'use client';
 
 import { useEditorStore } from '@/store/editorStore';
+import { MediaThumb } from '../media/Media';
 
-/** Recuadro de narración sobre el mapa: fase, fecha, título y descripción. */
+/** Recuadro de narración sobre el mapa: fase, fecha, título, descripción y adjuntos. */
 export function Narration() {
   const current = useEditorStore((s) => s.current);
   const count = useEditorStore((s) => s.scenario.phases.length);
@@ -18,6 +19,14 @@ export function Narration() {
         {phase.title}
       </div>
       {phase.desc ? <div className="mt-[5px] text-[13px] text-soft">{phase.desc}</div> : null}
+      {phase.media?.length ? (
+        // La galería sí recibe clics (el resto del recuadro deja pasar el ratón al mapa).
+        <div className="pointer-events-auto mt-2 flex gap-1.5 overflow-x-auto pb-0.5">
+          {phase.media.map((m, i) => (
+            <MediaThumb key={m.id} items={phase.media ?? []} index={i} />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

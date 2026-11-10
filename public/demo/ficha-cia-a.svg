@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560" font-family="Arial, Helvetica, sans-serif">
+  <rect width="800" height="560" fill="#f4f1e8"/>
+  <rect x="0" y="0" width="800" height="54" fill="#1E2A3D"/>
+  <text x="24" y="35" font-size="22" font-weight="700" fill="#D8B46A" letter-spacing="2">CIA A · ORGANIZACIÓN</text>
+  <text x="776" y="35" font-size="14" fill="#DDE4EE" text-anchor="end">DATOS FICTICIOS</text>
+  <g stroke="#000" stroke-width="3">
+    <rect x="335" y="90" width="130" height="80" fill="#00AEEF"/>
+    <path d="M400 170 V215 M150 215 H650 M150 215 V250 M400 215 V250 M650 215 V250" fill="none"/>
+    <rect x="85" y="250" width="130" height="80" fill="#00AEEF"/>
+    <rect x="335" y="250" width="130" height="80" fill="#00AEEF"/>
+    <rect x="585" y="250" width="130" height="80" fill="#00AEEF"/>
+  </g>
+  <g font-weight="700" text-anchor="middle">
+    <text x="400" y="80" font-size="20">I</text>
+    <text x="400" y="138" font-size="24">FF.EE</text>
+    <text x="150" y="245" font-size="16">•••</text><text x="150" y="298" font-size="20">1.er PEL</text>
+    <text x="400" y="245" font-size="16">•••</text><text x="400" y="298" font-size="20">2.º PEL</text>
+    <text x="650" y="245" font-size="16">•••</text><text x="650" y="298" font-size="20">3.er PEL</text>
+  </g>
+  <g font-size="18" fill="#1E2A3D">
+    <text x="85" y="390" font-weight="700">Efectivos: 36 PAX (3 × 12)</text>
+    <text x="85" y="420">Movilidad: asalto aéreo</text>
+    <text x="85" y="450">Misión: aislar y asegurar el OBJ 1</text>
+    <text x="85" y="480">Medios: transporte en 02 UH-60 (SECC AV)</text>
+  </g>
+</svg>

@@ -1,3 +1,4 @@
+import { exerciseScenario } from './exercise';
 import { uid } from './id';
 import type {
   FactionId,
@@ -210,3 +211,9 @@ export function sampleScenario(): Scenario {
     ],
   };
 }
+
+/** Escenarios de ejemplo que se pueden abrir desde el menú «Ejemplos». */
+export const EXAMPLES: ReadonlyArray<{ name: string; create: () => Scenario }> = [
+  { name: 'Ejercicio Cordillera', create: () => sampleScenario() },
+  { name: 'Ejercicio Halcón (inserción aérea)', create: () => exerciseScenario() },
+];

@@ -4,10 +4,12 @@ import {
   EFFECTIVENESS_IDS,
   FACTION_IDS,
   LINE_TYPES,
+  MEDIA_KINDS,
   MOBILITY_IDS,
   POINT_TYPES,
   REINFORCEMENT_IDS,
   STATUS_IDS,
+  TRAVEL_MODES,
   UNIT_TYPES,
 } from './ids';
 import type { Scenario } from './types';
@@ -33,6 +35,45 @@ const framesOf = <T extends z.ZodType>(frame: T) =>
     message: 'El objeto necesita al menos un frame',
   });
 
+export const MediaRefSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(MEDIA_KINDS),
+  name: z.string().default(''),
+  caption: z.string().default(''),
+  url: z.string().optional(),
+});
+
+/** Lista de adjuntos: los elementos mal formados se descartan sin rechazar el archivo. */
+const mediaList = z
+  .array(z.unknown())
+  .optional()
+  .catch(undefined)
+  .transform((arr) => {
+    if (!arr) return undefined;
+    const ok = arr.flatMap((m) => {
+      const r = MediaRefSchema.safeParse(m);
+      return r.success ? [r.data] : [];
+    });
+    return ok.length ? ok : undefined;
+  });
+
+const cardSchema = z
+  .object({
+    pax: z.number().int().min(0).optional().catch(undefined),
+    medios: z.string().optional().catch(undefined),
+    mision: z.string().optional().catch(undefined),
+  })
+  .optional()
+  .catch(undefined);
+
+const travelSchema = z
+  .object({
+    mode: z.enum(TRAVEL_MODES),
+    speed: z.number().positive().optional().catch(undefined),
+  })
+  .optional()
+  .catch(undefined);
+
 const base = {
   id: z
     .string()
@@ -43,6 +84,7 @@ const base = {
   notes: z.string().default(''),
   start: z.number().int().min(0).default(0),
   end: z.number().int().min(0).nullable().default(null),
+  media: mediaList,
 };
 
 /** Campos opcionales del MFRE 1-02. Un valor no válido se descarta en vez de rechazar el archivo. */
@@ -55,6 +97,7 @@ const symbolFields = {
   reinforced: z.enum(REINFORCEMENT_IDS).optional().catch(undefined),
   effectiveness: z.enum(EFFECTIVENESS_IDS).optional().catch(undefined),
   status: z.enum(STATUS_IDS).optional().catch(undefined),
+  card: cardSchema,
 };
 
 export const UnitObjectSchema = z.object({
@@ -78,6 +121,7 @@ export const PointObjectSchema = z.object({
 export const LineObjectSchema = z.object({
   ...base,
   force: symbolFields.force,
+  travel: travelSchema,
   kind: z.literal('line'),
   type: z.enum(LINE_TYPES).catch('frente'),
   echelon: z.string().optional(),
@@ -101,6 +145,7 @@ export const PhaseSchema = z.object({
   date: z.string().default(''),
   desc: z.string().default(''),
   view: PhaseViewSchema.nullable().default(null),
+  media: mediaList,
 });
 
 export const ScenarioSchema = z.object({
@@ -109,6 +154,7 @@ export const ScenarioSchema = z.object({
   speed: z.number().positive().catch(2),
   phases: z.array(PhaseSchema).min(1),
   objects: z.array(MapObjectSchema),
+  mediaData: z.record(z.string(), z.string()).optional().catch(undefined),
 });
 
 export type ParseResult = { ok: true; scenario: Scenario } | { ok: false; error: string };

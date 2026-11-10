@@ -6,6 +6,7 @@ import { useMap } from 'react-leaflet';
 import { FACTIONS, LINES } from '@/domain/catalog';
 import { HEAD_ICON, esc, headAngle, lineStyle } from '@/domain/symbols';
 import { objectStateAt } from '@/domain/timeline';
+import { travelSummary } from '@/domain/travel';
 import type { LatLngTuple, LineObject } from '@/domain/types';
 import { useEditorStore } from '@/store/editorStore';
 import { useTimeSubscription } from './useTimeSubscription';
@@ -61,19 +62,29 @@ function TraceLayerImpl({ obj, selected, phaseCount }: Props) {
   }, [id, type]);
 
   const area = LINES[type]?.area;
+  const travel = obj.travel;
+  /** Último resumen de distancia/tiempo mostrado, para no reescribir la etiqueta en cada frame. */
+  const lastSummary = useRef('');
+  const tooltipHtml = useCallback(
+    (summary: string) =>
+      (area ? `<span class="area-badge">${area}</span>` : '') +
+      esc(obj.label) +
+      (summary ? `<span class="trip">${esc(summary)}</span>` : ''),
+    [area, obj.label],
+  );
   useEffect(() => {
     const l = ref.current;
     if (!l) return;
     l.main.unbindTooltip();
-    const html = (area ? `<span class="area-badge">${area}</span>` : '') + esc(obj.label);
-    if (obj.label || area)
-      l.main.bindTooltip(html, {
+    lastSummary.current = '';
+    if (obj.label || area || travel)
+      l.main.bindTooltip(tooltipHtml(''), {
         permanent: true,
         direction: 'center',
         className: 'ltip',
         interactive: false,
       });
-  }, [obj.label, area]);
+  }, [obj.label, area, travel, tooltipHtml]);
 
   const apply = useCallback(
     (time: number) => {
@@ -90,13 +101,20 @@ function TraceLayerImpl({ obj, selected, phaseCount }: Props) {
       if (!map.hasLayer(l.main)) l.main.addTo(map);
       // Mantener la etiqueta centrada mientras el trazo se mueve.
       const tip = l.main.getTooltip();
-      if (tip && st.pts.length) tip.setLatLng(l.main.getCenter());
+      if (tip && st.pts.length) {
+        tip.setLatLng(l.main.getCenter());
+        const summary = travel ? travelSummary(st.pts, travel) : '';
+        if (summary !== lastSummary.current) {
+          lastSummary.current = summary;
+          tip.setContent(tooltipHtml(summary));
+        }
+      }
       if (l.head) {
         if (!map.hasLayer(l.head)) l.head.addTo(map);
         updateHead(map, l.head, st.pts, FACTIONS[obj.faction].vivid, st.opacity);
       }
     },
-    [obj, phaseCount, selected, map],
+    [obj, phaseCount, selected, map, travel, tooltipHtml],
   );
   useTimeSubscription(apply);
 

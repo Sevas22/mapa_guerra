@@ -531,6 +531,10 @@ export function pointOpts(o: {
   };
 }
 
+/** Etiqueta de una unidad: nombre y efectivos ("BI-1 · 76 PAX"). */
+export const unitLabel = (o: { label: string; card?: { pax?: number } }): string =>
+  [o.label, o.card?.pax != null ? `${o.card.pax} PAX` : ''].filter(Boolean).join(' · ');
+
 /** Icono de un objeto con posición (unidad o punto). */
 export function iconSpecFor(
   o: Extract<MapObject, { kind: 'unit' | 'point' }>,
@@ -543,7 +547,7 @@ export function iconSpecFor(
       className: 'symwrap',
       iconSize: [w, h],
       iconAnchor: [cx, cy],
-      html: `<div class="sym${s}" style="width:${w}px;height:${h}px">${unitSVG(o)}${o.label ? `<span class="lbl" style="left:${cx}px;top:${h - 4}px">${esc(o.label)}</span>` : ''}</div>`,
+      html: `<div class="sym${s}" style="width:${w}px;height:${h}px">${unitSVG(o)}${unitLabel(o) ? `<span class="lbl" style="left:${cx}px;top:${h - 4}px">${esc(unitLabel(o))}</span>` : ''}${o.media?.length ? '<span class="clip" title="Tiene adjuntos">📎</span>' : ''}</div>`,
     };
   }
   const c = FACTIONS[o.faction].vivid;

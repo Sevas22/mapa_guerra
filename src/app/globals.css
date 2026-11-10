@@ -414,3 +414,21 @@
   font: 700 12px/1.35 var(--font-display);
   letter-spacing: 0.05em;
 }
+
+/* Indicador de adjuntos en un símbolo. */
+.sym .clip {
+  position: absolute;
+  right: -2px;
+  top: 8px;
+  font-size: 12px;
+  line-height: 1;
+  filter: drop-shadow(0 0 2px #000);
+  pointer-events: none;
+}
+.leaflet-tooltip.ltip .trip {
+  display: block;
+  margin-top: 1px;
+  font: 500 11px var(--font-mono);
+  color: #ffe9a8;
+  text-align: center;
+}

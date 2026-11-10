@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="600" viewBox="0 0 960 600" font-family="Arial, Helvetica, sans-serif">
+  <rect width="960" height="600" fill="#f4f1e8"/>
+  <rect x="0" y="0" width="960" height="54" fill="#1E2A3D"/>
+  <text x="24" y="35" font-size="22" font-weight="700" fill="#D8B46A" letter-spacing="2">EJERCICIO HALCÓN · ESQUEMA GENERAL</text>
+  <text x="936" y="35" font-size="14" fill="#DDE4EE" text-anchor="end">ENTRENAMIENTO · DATOS FICTICIOS</text>
+  <!-- Base -->
+  <rect x="770" y="110" width="120" height="70" fill="#00AEEF" stroke="#000" stroke-width="3"/>
+  <rect x="815" y="92" width="30" height="18" fill="#000"/>
+  <text x="830" y="152" font-size="22" font-weight="700" text-anchor="middle">BASE A</text>
+  <!-- Ruta aérea -->
+  <path d="M770 150 L560 250 L360 330 L210 400" fill="none" stroke="#1F6FD1" stroke-width="5" stroke-dasharray="16 10"/>
+  <circle cx="560" cy="250" r="22" fill="#111"/><text x="560" y="257" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">PCA1</text>
+  <circle cx="360" cy="330" r="22" fill="#111"/><text x="360" y="337" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">PCA2</text>
+  <text x="600" y="215" font-size="15" fill="#1F6FD1" font-weight="700">49 km · 26 MN · 13 min</text>
+  <!-- AO -->
+  <rect x="70" y="300" width="330" height="250" fill="none" stroke="#E31E24" stroke-width="4"/>
+  <rect x="80" y="310" width="66" height="24" rx="4" fill="#fff" stroke="#E31E24" stroke-width="2"/>
+  <text x="113" y="328" font-size="16" font-weight="700" fill="#E31E24" text-anchor="middle">AO</text>
+  <!-- ZD -->
+  <ellipse cx="200" cy="400" rx="38" ry="20" fill="#2E9BFF" stroke="#111" stroke-width="2"/><text x="200" y="406" font-size="16" font-weight="700" text-anchor="middle">ZD1</text>
+  <ellipse cx="290" cy="410" rx="38" ry="20" fill="#2E9BFF" stroke="#111" stroke-width="2"/><text x="290" y="416" font-size="16" font-weight="700" text-anchor="middle">ZD2</text>
+  <!-- OBJ -->
+  <circle cx="250" cy="500" r="30" fill="#E31E24" stroke="#fff" stroke-width="3"/>
+  <text x="250" y="496" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">OBJ</text>
+  <text x="250" y="514" font-size="18" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+  <!-- Leyenda -->
+  <g font-size="15" fill="#1E2A3D">
+    <text x="470" y="420" font-weight="700">FASES</text>
+    <text x="470" y="446">1. Alistamiento en la Base A</text>
+    <text x="470" y="470">2. Movimiento aéreo por PCA 1 y PCA 2</text>
+    <text x="470" y="494">3. Desembarco en ZD1 y ZD2</text>
+    <text x="470" y="518">4. Aproximación y maniobra sobre el OBJ 1</text>
+    <text x="470" y="542">5. Consolidación y extracción por ZE1</text>
+  </g>
+</svg>

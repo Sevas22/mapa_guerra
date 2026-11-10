@@ -7,6 +7,8 @@
 import type {
   EFFECTIVENESS_IDS,
   FACTION_IDS,
+  MEDIA_KINDS,
+  TRAVEL_MODES,
   LINE_TYPES,
   MOBILITY_IDS,
   POINT_TYPES,
@@ -24,6 +26,37 @@ export type Mobility = (typeof MOBILITY_IDS)[number];
 export type Reinforcement = (typeof REINFORCEMENT_IDS)[number];
 export type Effectiveness = (typeof EFFECTIVENESS_IDS)[number];
 export type SymbolStatus = (typeof STATUS_IDS)[number];
+export type MediaKind = (typeof MEDIA_KINDS)[number];
+export type TravelMode = (typeof TRAVEL_MODES)[number];
+
+/**
+ * Adjunto multimedia (imagen o video). El archivo se guarda aparte (IndexedDB)
+ * con el mismo `id`; `url` solo se usa para recursos incluidos en la app.
+ */
+export interface MediaRef {
+  id: string;
+  kind: MediaKind;
+  name: string;
+  caption: string;
+  url?: string;
+}
+
+/** Ficha de una unidad o instalación: efectivos, medios y misión. */
+export interface UnitCard {
+  /** Efectivos (PAX). */
+  pax?: number;
+  /** Medios: aeronaves, vehículos, embarcaciones… (texto libre). */
+  medios?: string;
+  /** Misión o tarea asignada. */
+  mision?: string;
+}
+
+/** Medio y velocidad de desplazamiento de un trazo. */
+export interface Travel {
+  mode: TravelMode;
+  /** Velocidad en km/h; si falta se usa la típica del medio. */
+  speed?: number;
+}
 
 /** [lat, lng] */
 export type LatLngTuple = [number, number];
@@ -51,6 +84,8 @@ interface BaseObject {
   start: number;
   /** Última fase en la que es visible; `null` = hasta el final. */
   end: number | null;
+  /** Imágenes y videos adjuntos. */
+  media?: MediaRef[];
 }
 
 /**
@@ -74,6 +109,8 @@ export interface SymbolFields {
   effectiveness?: Effectiveness;
   /** Presente o planeada (marco punteado). */
   status?: SymbolStatus;
+  /** Ficha de efectivos y medios. */
+  card?: UnitCard;
 }
 
 export interface UnitObject extends BaseObject, SymbolFields {
@@ -94,6 +131,8 @@ export interface PointObject extends BaseObject, SymbolFields {
 export interface LineObject extends BaseObject {
   kind: 'line';
   force?: string;
+  /** Medio de desplazamiento, para calcular distancia y tiempo. */
+  travel?: Travel;
   type: LineType;
   echelon?: string;
   frames: Frames<LineFrame>;
@@ -115,6 +154,8 @@ export interface Phase {
   date: string;
   desc: string;
   view: PhaseView | null;
+  /** Imágenes y videos que acompañan la narración de la fase. */
+  media?: MediaRef[];
 }
 
 export type Speed = 1 | 2 | 4 | 7;
@@ -126,4 +167,9 @@ export interface Scenario {
   speed: number;
   phases: Phase[];
   objects: MapObject[];
+  /**
+   * Solo en archivos exportados: contenido de los adjuntos como data URL, por id.
+   * Al importar se mueve a IndexedDB y desaparece del escenario.
+   */
+  mediaData?: Record<string, string>;
 }

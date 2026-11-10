@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Header } from './Header';
+import { MediaViewer } from './media/Media';
 import { Inspector } from './inspector/Inspector';
 import { MapHint } from './map/MapHint';
 import { Palette } from './palette/Palette';
@@ -40,6 +41,7 @@ export default function Editor() {
       <footer className="area-tl flex min-w-0 flex-col border-t border-line bg-panel">
         <Timeline />
       </footer>
+      <MediaViewer />
     </div>
   );
 }

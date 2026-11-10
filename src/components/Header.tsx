@@ -1,21 +1,48 @@
 'use client';
 
-import { useRef } from 'react';
-import { blankScenario } from '@/domain/sample';
+import { useRef, useState } from 'react';
+import { EXAMPLES, blankScenario } from '@/domain/sample';
+import type { Scenario } from '@/domain/types';
 import { exportScenario, readScenarioFile } from '@/lib/file';
-import { fitScenario, resetView } from '@/lib/mapBridge';
+import { fitScenario, flyToView, resetView } from '@/lib/mapBridge';
+import { storeEmbeddedMedia, withEmbeddedMedia } from '@/lib/mediaStore';
 import { useEditorStore } from '@/store/editorStore';
+
+const CONFIRM = '¿Reemplazar el escenario actual? Exporta antes el actual si quieres conservarlo.';
+
+function openScenario(s: Scenario) {
+  useEditorStore.getState().loadScenario(s);
+  const v = s.phases[0]?.view;
+  if (v) flyToView(v, 1);
+  else fitScenario(s);
+}
 
 export function Header() {
   const name = useEditorStore((s) => s.scenario.name);
   const saveStatus = useEditorStore((s) => s.saveStatus);
   const fileIn = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
 
   const onNew = () => {
-    if (!confirm('¿Empezar un escenario nuevo? Exporta antes el actual si quieres conservarlo.'))
-      return;
+    if (!confirm(CONFIRM)) return;
     useEditorStore.getState().loadScenario(blankScenario());
     resetView();
+  };
+
+  const onExample = (i: number) => {
+    const ex = EXAMPLES[i];
+    if (!ex || !confirm(CONFIRM)) return;
+    openScenario(ex.create());
+  };
+
+  const onExport = async () => {
+    setBusy(true);
+    try {
+      // Los adjuntos se incrustan en el JSON para que el archivo sea autónomo.
+      exportScenario(await withEmbeddedMedia(useEditorStore.getState().scenario));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,8 +54,12 @@ export function Header() {
       alert(`Ese archivo no es un escenario válido de Mapa Táctico.\n\n${r.error}`);
       return;
     }
-    useEditorStore.getState().loadScenario(r.scenario);
-    if (!r.scenario.phases[0]?.view) fitScenario(r.scenario);
+    setBusy(true);
+    try {
+      openScenario(await storeEmbeddedMedia(r.scenario));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -39,19 +70,28 @@ export function Header() {
       <div className="min-w-0 flex-1 truncate text-[13px] text-muted">{name}</div>
       <div className="flex items-center gap-2">
         <span className="font-mono text-xs whitespace-nowrap text-muted" aria-live="polite">
-          {saveStatus}
+          {busy ? 'Procesando adjuntos…' : saveStatus}
         </span>
+        <select
+          aria-label="Abrir un ejemplo"
+          className="w-auto! py-[5px]! text-[13px]"
+          value=""
+          onChange={(e) => onExample(Number(e.target.value))}
+        >
+          <option value="">Ejemplos…</option>
+          {EXAMPLES.map((x, i) => (
+            <option key={x.name} value={i}>
+              {x.name}
+            </option>
+          ))}
+        </select>
         <button type="button" className="btn" onClick={onNew}>
           Nuevo
         </button>
         <button type="button" className="btn" onClick={() => fileIn.current?.click()}>
           Abrir…
         </button>
-        <button
-          type="button"
-          className="btn primary"
-          onClick={() => exportScenario(useEditorStore.getState().scenario)}
-        >
+        <button type="button" className="btn primary" disabled={busy} onClick={onExport}>
           Exportar .json
         </button>
       </div>

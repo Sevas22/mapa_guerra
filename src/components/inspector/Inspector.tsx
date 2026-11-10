@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
   ECHELONS,
   EFFECTIVENESS,
@@ -13,7 +14,16 @@ import {
   plainName,
   usesIconText,
 } from '@/domain/catalog';
+import { isTaskType } from '@/domain/tasks';
 import { frameAt, hasOwnFrame, visibleAt } from '@/domain/timeline';
+import {
+  KM_PER_NM,
+  TRAVEL_DEFS,
+  forceSummary,
+  pathKm,
+  travelSpeed,
+  travelSummary,
+} from '@/domain/travel';
 import type {
   Effectiveness,
   FactionId,
@@ -22,7 +32,9 @@ import type {
   Phase,
   Reinforcement,
   SymbolStatus,
+  TravelMode,
 } from '@/domain/types';
+import { MediaEditor } from '../media/Media';
 import { currentView } from '@/lib/mapBridge';
 import { selectSelected, useEditorStore } from '@/store/editorStore';
 
@@ -37,6 +49,37 @@ function PhaseOptions({ phases, from }: { phases: Phase[]; from: number }) {
         </option>
       ))}
     </>
+  );
+}
+
+/** Unidades y efectivos (PAX) visibles en la fase actual, por identidad. */
+function ForceSummarySection() {
+  const scenario = useEditorStore((s) => s.scenario);
+  const current = useEditorStore((s) => s.current);
+  const rows = useMemo(() => forceSummary(scenario, current), [scenario, current]);
+  if (!rows.length) return null;
+  return (
+    <section className="sec">
+      <h2 className="sec-h">Fuerza en esta fase</h2>
+      <table className="w-full text-xs">
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.faction} className="border-b border-line last:border-0">
+              <td className="py-1">
+                <i
+                  className="mr-1.5 inline-block size-2.5 rounded-[2px] align-middle"
+                  style={{ background: FACTIONS[r.faction].fill }}
+                />
+                {FACTIONS[r.faction].name}
+              </td>
+              <td className="py-1 text-right font-mono">{r.units} und.</td>
+              <td className="py-1 text-right font-mono">{r.pax ? `${r.pax} PAX` : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="note">Los PAX salen de la ficha de cada unidad.</p>
+    </section>
   );
 }
 
@@ -114,6 +157,12 @@ function PhaseInspector() {
         </p>
       </section>
       <section className="sec">
+        <h2 className="sec-h">Imágenes y videos de la fase</h2>
+        <p className="note">Se muestran junto a la narración y se abren a pantalla completa.</p>
+        <MediaEditor media={p.media} onChange={(media) => updatePhase({ media })} />
+      </section>
+      <ForceSummarySection />
+      <section className="sec">
         <h2 className="sec-h">Escenario</h2>
         <label className="field">
           Nombre
@@ -166,6 +215,106 @@ function CoordInput({
         }}
       />
     </label>
+  );
+}
+
+/** Ficha de efectivos, medios y misión (unidades y puntos). */
+function CardSection({ o }: { o: MapObject }) {
+  const update = useEditorStore((s) => s.updateObject);
+  if (o.kind === 'line') return null;
+  const card = o.card ?? {};
+  const set = (patch: Partial<typeof card>) => update(o.id, { card: { ...card, ...patch } });
+  return (
+    <section className="sec">
+      <h2 className="sec-h">Ficha</h2>
+      <div className="row">
+        <label className="field">
+          Efectivos (PAX)
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={card.pax ?? ''}
+            onChange={(e) =>
+              set({
+                pax: e.target.value === '' ? undefined : Math.max(0, Math.round(+e.target.value)),
+              })
+            }
+          />
+        </label>
+        <label className="field">
+          Medios
+          <input
+            type="text"
+            value={card.medios ?? ''}
+            placeholder="02 UH-60, 01 AH-60…"
+            onChange={(e) => set({ medios: e.target.value || undefined })}
+          />
+        </label>
+      </div>
+      <label className="field">
+        Misión
+        <textarea
+          value={card.mision ?? ''}
+          placeholder="Tarea asignada en la operación"
+          onChange={(e) => set({ mision: e.target.value || undefined })}
+        />
+      </label>
+    </section>
+  );
+}
+
+/** Distancia del trazo y tiempo estimado según el medio de desplazamiento. */
+function TravelSection({ o }: { o: Extract<MapObject, { kind: 'line' }> }) {
+  const current = useEditorStore((s) => s.current);
+  const update = useEditorStore((s) => s.updateObject);
+  if (isTaskType(o.type) || LINES[o.type]?.area || o.type === 'zona') return null;
+  const pts = frameAt(o, current).pts;
+  const km = pathKm(pts);
+  const t = o.travel;
+  return (
+    <>
+      <div className="row">
+        <label className="field">
+          Desplazamiento
+          <select
+            value={t?.mode ?? ''}
+            onChange={(e) =>
+              update(o.id, {
+                travel: e.target.value ? { mode: e.target.value as TravelMode } : undefined,
+              })
+            }
+          >
+            <option value="">Sin calcular tiempo</option>
+            {(Object.entries(TRAVEL_DEFS) as [TravelMode, { name: string }][]).map(([k, d]) => (
+              <option key={k} value={k}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {t ? (
+          <label className="field">
+            Velocidad (km/h)
+            <input
+              type="number"
+              min={0.5}
+              step={0.5}
+              value={t.speed ?? TRAVEL_DEFS[t.mode].speed}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                if (Number.isFinite(v) && v > 0) update(o.id, { travel: { ...t, speed: v } });
+              }}
+            />
+          </label>
+        ) : null}
+      </div>
+      <p className="note">
+        <span className="font-mono text-fg">{travelSummary(pts, t)}</span>
+        {t ? ` a ${travelSpeed(t)} km/h` : ` · ${(km / KM_PER_NM).toFixed(1).replace('.', ',')} MN`}
+        . Se muestra junto a la etiqueta en el mapa.
+      </p>
+    </>
   );
 }
 
@@ -438,6 +587,12 @@ function ObjectInspector({ o }: { o: MapObject }) {
           </label>
         </div>
         <PositionSection o={o} />
+        {o.kind === 'line' ? <TravelSection o={o} /> : null}
+      </section>
+      <CardSection o={o} />
+      <section className="sec">
+        <h2 className="sec-h">Imágenes y videos</h2>
+        <MediaEditor media={o.media} onChange={(media) => update(o.id, { media })} />
       </section>
       <section className="sec">
         <div className="row">
