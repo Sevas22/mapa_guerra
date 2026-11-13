@@ -2,13 +2,24 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { LINES } from '@/domain/catalog';
 import { round6 } from '@/domain/coords';
+import {
+  emptyHistory,
+  record,
+  redo as redoOp,
+  undo as undoOp,
+  type History,
+  type Snapshot,
+} from '@/domain/history';
 import { sampleScenario } from '@/domain/sample';
 import {
   createObject,
   dedupeVertices,
   duplicateObject,
   patchObject,
+  removeItem as removeItemOp,
   removeObject,
+  upsertItem as upsertItemOp,
+  type CollectionKey,
   setObjectFrame,
   type ObjectPatch,
 } from '@/domain/scenario';
@@ -37,7 +48,7 @@ import {
 export type Tool =
   | { mode: 'select' }
   | { mode: 'place'; kind: 'unit'; type: UnitType }
-  | { mode: 'place'; kind: 'point'; type: PointType }
+  | { mode: 'place'; kind: 'point'; type: PointType; extra?: ObjectPatch }
   | { mode: 'draw'; kind: 'line'; type: LineType; redrawId?: string };
 
 export interface GotoTarget {
@@ -68,6 +79,10 @@ export interface EditorState {
   draftError: string | null;
   gotoTarget: GotoTarget | null;
   saveStatus: string;
+  /** Historial de deshacer y rehacer. Solo vive en memoria: no se guarda ni se exporta. */
+  history: History;
+  /** Vista 3D con relieve (solo para ver y reproducir). No se guarda. */
+  view3d: boolean;
 
   goto: (i: number, fly?: boolean) => void;
   select: (id: string | null) => void;
@@ -94,6 +109,21 @@ export interface EditorState {
   /** Usados por el motor de reproducción. */
   setPlayhead: (time: number, progress: number) => void;
   setPlaying: (playing: boolean) => void;
+  /** Deshace el último cambio del escenario (o el último vértice del trazo en curso). */
+  undo: () => void;
+  /** Rehace el último cambio deshecho. */
+  redo: () => void;
+  /** Abre o cierra la vista 3D. Al abrirla se suelta la herramienta y se cancela el trazo. */
+  setView3d: (on: boolean) => void;
+  /** Crea o reemplaza un perfil, grafo o modelo. `key` agrupa ediciones seguidas (arrastres, teclas). */
+  upsertItem: <K extends CollectionKey>(
+    coll: K,
+    item: NonNullable<Scenario[K]>[number],
+    key?: string,
+  ) => void;
+  removeItem: (coll: CollectionKey, id: string) => void;
+  /** Agrega varios perfiles de una vez (importación). */
+  addProfiles: (list: NonNullable<Scenario['profiles']>) => void;
 }
 
 const SELECT: Tool = { mode: 'select' };
@@ -103,8 +133,57 @@ export const scenarioRepository: ScenarioRepository = new LocalScenarioRepositor
 export const useEditorStore = create<EditorState>()(
   persist(
     (set, get) => {
-      /** Cambia el escenario conservando el resto del estado. */
-      const mutate = (fn: (s: Scenario) => Scenario) => set({ scenario: fn(get().scenario) });
+      /** Dentro de `batch`, los cambios no se registran uno a uno. */
+      let batching = false;
+
+      const snapshot = (): Snapshot => ({ scenario: get().scenario, current: get().current });
+
+      /**
+       * Cambia el escenario conservando el resto del estado y registra el paso en el historial.
+       * `key` agrupa cambios seguidos del mismo campo (p. ej. cada tecla al escribir un título).
+       */
+      const mutate = (fn: (s: Scenario) => Scenario, key?: string) => {
+        const before = snapshot();
+        const scenario = fn(before.scenario);
+        if (scenario === before.scenario) return;
+        set(batching ? { scenario } : { scenario, history: record(get().history, before, key) });
+      };
+
+      /** Ejecuta varios cambios como un solo paso de deshacer. */
+      const batch = (fn: () => void) => {
+        if (batching) return fn();
+        const before = snapshot();
+        batching = true;
+        try {
+          fn();
+        } finally {
+          batching = false;
+        }
+        if (get().scenario !== before.scenario) set({ history: record(get().history, before) });
+      };
+
+      /** Restaura una instantánea del historial. */
+      const restore = (snap: Snapshot, history: History) => {
+        const cur = Math.max(0, Math.min(snap.current, snap.scenario.phases.length - 1));
+        const { selectedId } = get();
+        set({
+          scenario: snap.scenario,
+          history,
+          current: cur,
+          time: cur,
+          progress: 0,
+          draft: null,
+          draftError: null,
+          selectedId:
+            selectedId && snap.scenario.objects.some((o) => o.id === selectedId)
+              ? selectedId
+              : null,
+        });
+      };
+
+      /** Clave para agrupar ediciones seguidas de los mismos campos. */
+      const fieldKey = (prefix: string, patch: object) =>
+        `${prefix}:${Object.keys(patch).sort().join(',')}`;
 
       const addObjectAt = (...args: Parameters<typeof createObject>) => {
         const o = createObject(...args);
@@ -127,6 +206,8 @@ export const useEditorStore = create<EditorState>()(
         draftError: null,
         gotoTarget: null,
         saveStatus: '',
+        history: emptyHistory(),
+        view3d: false,
 
         goto: (i, fly = true) => {
           const n = get().scenario.phases.length;
@@ -143,6 +224,8 @@ export const useEditorStore = create<EditorState>()(
 
         setTool: (t) => {
           if (t.mode !== 'draw') set({ draft: null });
+          // Colocar o dibujar solo se hace en 2D (p. ej. «Redibujar en esta fase» desde el 3D).
+          if (t.mode !== 'select' && get().view3d) set({ view3d: false });
           set({ tool: t, draftError: null });
         },
 
@@ -153,9 +236,20 @@ export const useEditorStore = create<EditorState>()(
             const frame = { lat: round6(ll.lat), lng: round6(ll.lng) };
             if (tool.kind === 'unit')
               addObjectAt({ kind: 'unit', type: tool.type, frame }, faction, current, get().force);
-            else
-              addObjectAt({ kind: 'point', type: tool.type, frame }, faction, current, get().force);
-            if (!shiftKey) get().setTool(SELECT);
+            else {
+              const extra = tool.extra;
+              batch(() => {
+                const o = addObjectAt(
+                  { kind: 'point', type: tool.type, frame },
+                  faction,
+                  current,
+                  get().force,
+                );
+                if (extra) mutate((s) => patchObject(s, o.id, extra));
+              });
+            }
+            // Las fichas se colocan una vez: se vuelve a seleccionar.
+            if (!shiftKey || ('extra' in tool && tool.extra)) get().setTool(SELECT);
           } else if (tool.mode === 'draw') {
             const draft: LatLngTuple[] = [...(get().draft ?? []), [ll.lat, ll.lng]];
             set({ draft, draftError: null });
@@ -204,7 +298,8 @@ export const useEditorStore = create<EditorState>()(
 
         setFrame: (id, frame) => mutate((s) => setObjectFrame(s, id, get().current, frame)),
 
-        updateObject: (id, patch) => mutate((s) => patchObject(s, id, patch)),
+        updateObject: (id, patch) =>
+          mutate((s) => patchObject(s, id, patch), fieldKey(`obj:${id}`, patch)),
 
         deleteSelected: () => {
           const id = get().selectedId;
@@ -223,15 +318,18 @@ export const useEditorStore = create<EditorState>()(
 
         updatePhase: (patch) => {
           const cur = get().current;
-          mutate((s) => ({
-            ...s,
-            phases: s.phases.map((p, i) => (i === cur ? { ...p, ...patch } : p)),
-          }));
+          mutate(
+            (s) => ({
+              ...s,
+              phases: s.phases.map((p, i) => (i === cur ? { ...p, ...patch } : p)),
+            }),
+            fieldKey(`phase:${cur}`, patch),
+          );
         },
 
         setPhaseView: (view) => get().updatePhase({ view }),
 
-        setScenarioName: (name) => mutate((s) => ({ ...s, name })),
+        setScenarioName: (name) => mutate((s) => ({ ...s, name }), 'name'),
 
         setSpeed: (speed) => mutate((s) => ({ ...s, speed })),
 
@@ -251,6 +349,7 @@ export const useEditorStore = create<EditorState>()(
 
         loadScenario: (s) => {
           set({
+            history: emptyHistory(),
             scenario: s,
             selectedId: null,
             draft: null,
@@ -266,17 +365,53 @@ export const useEditorStore = create<EditorState>()(
         addGotoPoint: () => {
           const { gotoTarget, faction, current } = get();
           if (!gotoTarget) return;
-          const o = addObjectAt(
-            { kind: 'point', type: 'punto', frame: { lat: gotoTarget.lat, lng: gotoTarget.lng } },
-            faction,
-            current,
-          );
-          get().updateObject(o.id, { label: gotoTarget.name });
+          batch(() => {
+            const o = addObjectAt(
+              { kind: 'point', type: 'punto', frame: { lat: gotoTarget.lat, lng: gotoTarget.lng } },
+              faction,
+              current,
+            );
+            get().updateObject(o.id, { label: gotoTarget.name });
+          });
         },
 
         setPlayhead: (time, progress) => set({ time, progress }),
 
         setPlaying: (playing) => set({ playing }),
+
+        undo: () => {
+          const { playing, draft, history } = get();
+          if (playing) return;
+          // Mientras se dibuja, deshacer quita el último vértice.
+          if (draft) {
+            set({ draft: draft.length > 1 ? draft.slice(0, -1) : null, draftError: null });
+            return;
+          }
+          const r = undoOp(history, snapshot());
+          if (r) restore(r.snapshot, r.history);
+        },
+
+        redo: () => {
+          const { playing, draft, history } = get();
+          if (playing || draft) return;
+          const r = redoOp(history, snapshot());
+          if (r) restore(r.snapshot, r.history);
+        },
+
+        upsertItem: (coll, item, key) => mutate((s) => upsertItemOp(s, coll, item), key),
+
+        removeItem: (coll, id) => mutate((s) => removeItemOp(s, coll, id)),
+
+        addProfiles: (list) =>
+          mutate((s) => ({ ...s, profiles: [...(s.profiles ?? []), ...list] })),
+
+        setView3d: (on) => {
+          if (on) {
+            get().cancelDraft();
+            get().setTool(SELECT);
+          }
+          set({ view3d: on });
+        },
       };
     },
     {

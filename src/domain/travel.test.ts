@@ -5,6 +5,7 @@ import {
   formatKm,
   formatMinutes,
   forceSummary,
+  hasTravel,
   haversineKm,
   pathKm,
   travelMinutes,
@@ -114,5 +115,16 @@ describe('esquema: adjuntos, ficha y desplazamiento', () => {
     expect(r.scenario.objects[0]).toMatchObject({ card: { pax: 24, medios: '02 UH-60' } });
     expect(r.scenario.objects[1]).toMatchObject({ travel: { mode: 'aereo' } });
     expect(r.scenario.mediaData).toEqual({ a: 'data:image/png;base64,AAAA' });
+  });
+});
+
+describe('hasTravel', () => {
+  it('solo las rutas y los ejes tienen desplazamiento', () => {
+    expect(hasTravel('ruta')).toBe(true);
+    expect(hasTravel('eje')).toBe(true);
+    expect(hasTravel('frente')).toBe(false);
+    expect(hasTravel('zona')).toBe(false);
+    expect(hasTravel('ao')).toBe(false);
+    expect(hasTravel('aislar')).toBe(false);
   });
 });

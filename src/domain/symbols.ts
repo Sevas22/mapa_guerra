@@ -472,6 +472,8 @@ const POINT_SVG: Record<PointType, (o: PointSymbolOpts) => string> = {
   punto: ({ color }) =>
     `${svgOpen(18, 18)}<circle cx="9" cy="9" r="6" fill="${color}" stroke="#fff" stroke-width="2"/></svg>`,
   texto: () => '',
+  perfil: () => '',
+  grafo: () => '',
 };
 
 export const pointSVG = (type: PointType, opts: PointSymbolOpts): string =>

@@ -25,7 +25,8 @@ npm install
 npm run dev
 ```
 
-Abre <http://localhost:3000>. La primera vez se carga el escenario de ejemplo
+Abre <http://localhost:3000> (si el puerto está ocupado, `next dev` usa el siguiente libre, por
+ejemplo el 3001). La primera vez se carga el escenario de ejemplo
 "Ejercicio Cordillera"; a partir de ahí el escenario se autoguarda en `localStorage`.
 
 ## Scripts
@@ -61,6 +62,8 @@ Las pruebas cubren toda la lógica pura de `src/domain/` y `src/lib/`:
 
 ## Uso
 
+La guía completa para quien usa el editor está en [GUIA.md](GUIA.md). Resumen:
+
 1. **Ir a coordenadas**: escribe `4.7110, -74.0721`, `4°42′40″N 74°04′20″O`,
    `4 42 40 N 74 4 20 W` o el nombre de un lugar (búsqueda en Nominatim limitada a Colombia), o
    elige una ciudad. "Marcar punto" deja un punto con el nombre del lugar.
@@ -71,16 +74,33 @@ Las pruebas cubren toda la lógica pura de `src/domain/` y `src/lib/`:
    Desde el inspector puedes fijar en qué fases aparece y guardar la vista de cámara de cada fase.
 5. **Reproducir**: ▶ o Espacio. Pausa de 900 ms en cada fase y transición de 1, 2, 4 o 7 s.
 6. **Estilo del mapa**: el botón de capas (bajo el zoom) abre un panel para elegir el mapa base
-   (satélite, satélite nítido, terreno, relieve, físico, topográfico, National Geographic, calles,
-   OpenStreetMap, oscuro o claro) y activar capas superpuestas: sombreado de relieve, carreteras y
+   (satélite, satélite nítido, terreno, relieve sombreado, físico, topográfico, topográfico Esri,
+   National Geographic, calles, calles Esri, OpenStreetMap, oscuro, claro u ortoimagen IGAC) y
+   activar capas superpuestas: sombreado de relieve, carreteras y
    nombres y fronteras. La elección se guarda en el navegador y no forma parte del escenario.
    El grupo **Colombia · IGAC y DANE** añade cartografía oficial (ver más abajo).
 7. **Archivo**: "Exportar .json" descarga el escenario; "Abrir…" importa uno (también los
-   exportados desde el prototipo HTML).
+   exportados desde el prototipo HTML). "Nuevo", "Ejemplos…" y "Abrir…" piden
+   confirmación antes de reemplazar el escenario actual.
+8. **Desplazamiento** (solo rutas y ejes): a pie (2,5 km/h), motorizado por
+   pavimentado (45) o destapado (20), fluvial (25) o aéreo de ala rotatoria (220). La velocidad se
+   puede cambiar.
+9. **Vista 3D**: el botón **3D** (bajo el de capas) muestra el escenario sobre el relieve real
+   con la cámara inclinada, como Google Earth. Se puede girar, inclinar, exagerar el relieve
+   (×1 a ×3) y reproducir las fases. Es solo para ver: se edita en 2D. Las capas IGAC/DANE solo
+   se ven en 2D.
 
 Atajos: <kbd>←</kbd> <kbd>→</kbd> fase · <kbd>Espacio</kbd> reproducir/pausar ·
-<kbd>Supr</kbd> borrar selección · <kbd>V</kbd> seleccionar · <kbd>Esc</kbd> soltar herramienta.
-No se activan mientras escribes en un campo (Esc solo quita el foco).
+<kbd>Supr</kbd> o <kbd>Retroceso</kbd> borrar selección · <kbd>V</kbd> seleccionar ·
+<kbd>Enter</kbd> terminar trazo · <kbd>Esc</kbd> cancelar, soltar herramienta o cerrar el visor ·
+<kbd>Ctrl</kbd>+<kbd>Z</kbd> deshacer · <kbd>Ctrl</kbd>+<kbd>Y</kbd> o
+<kbd>Ctrl</kbd>+<kbd>Mayús</kbd>+<kbd>Z</kbd> rehacer (<kbd>Cmd</kbd> en Mac).
+No se activan mientras escribes en un campo, salvo Esc, que además quita el foco.
+
+**Deshacer y rehacer**: los botones ↶ ↷ de la barra superior y sus atajos deshacen cualquier
+cambio del escenario y vuelven a la fase en que se hizo. Las ediciones seguidas del mismo campo
+(menos de 1 s entre teclas) cuentan como un paso. El historial guarda 100 pasos, vive solo en
+memoria y se vacía al cargar otro escenario.
 
 ## Cartografía oficial de Colombia (IGAC y DANE)
 
@@ -153,9 +173,13 @@ Todos los campos nuevos son opcionales, así que los archivos del prototipo sigu
   inspector de la fase resume unidades y efectivos por identidad.
 - **Distancia y tiempo** de rutas y ejes según el medio (a pie, motorizado, fluvial, aéreo) y la
   velocidad; en los trayectos aéreos también en millas náuticas.
-- **Ejemplos**: el menú «Ejemplos…» abre el Ejercicio Cordillera o el **Ejercicio Halcón**, una
+- **Ejemplos**: el menú «Ejemplos…» abre el Ejercicio Cordillera, el **Ejercicio Halcón**, una
   inserción aérea de entrenamiento totalmente ficticia (OPFOR simulado) que usa todas estas
-  funciones.
+  funciones, o el **Ejercicio Colibrí**, un asalto aéreo con helicóptero en 10 fases (A → B,
+  desembarco, asalto, extracción y regreso) pensado para la reproducción en 3D. Todos son
+  ficticios y están en zonas despobladas. El **Ejercicio Argos** muestra la integración de
+  inteligencia (sensores, HUMINT, SIGINT, GEOINT, UAS, EW y CIBINT) con registros fechados que
+  se acumulan y, en sus notas, el límite de cada evidencia.
 
 ## Arquitectura
 
@@ -168,6 +192,7 @@ src/
     Header.tsx         nombre, estado de guardado, Nuevo / Abrir / Exportar
     map/               TacticalMap, UnitMarker, TraceLayer, DraftLayer, MapHint,
                        BaseLayers, DynamicImageLayer (IGAC/DANE), MapStyleControl
+    map3d/             Map3D (MapLibre con relieve, carga diferida), View3DToggle
     palette/           Palette, GotoCoords
     inspector/         Inspector (fase o objeto seleccionado)
     timeline/          Timeline, Narration
@@ -177,9 +202,15 @@ src/
     catalog.ts         FACTIONS, UNITS, POINTS, LINES, ECHELONS, PLACES
     symbols.ts         SVG de unidades, puntos y vistas previas
     timeline.ts        frameAt, visibleAt, interpolación, insertar/eliminar fase
+    history.ts         historial de deshacer y rehacer
+    scene3d.ts         escena de la vista 3D: GeoJSON, símbolos y rótulos por instante
     coords.ts          parseCoords, formato DMS, límites de Colombia
     scenario.ts        crear, duplicar y modificar objetos
-    sample.ts          escenario de ejemplo ficticio
+    sample.ts          escenario de ejemplo ficticio y menú de ejemplos
+    builders.ts        ayudantes para escribir escenarios de ejemplo
+    exercise.ts        Ejercicio Halcón (inserción aérea)
+    airAssault.ts      Ejercicio Colibrí (asalto aéreo con helicóptero)
+    argos.ts           Ejercicio Argos (inteligencia integrada)
     basemaps.ts        catálogo de mapas base y capas (XYZ y ArcGIS)
     arcgis.ts          URL de export ArcGIS, proyección Web Mercator
   store/editorStore.ts Zustand + persist
@@ -199,6 +230,12 @@ Decisiones relevantes:
 - **Animación sin re-render.** La reproducción escribe `time` y `progress` en el store; las capas
   de Leaflet y la barra de progreso se suscriben fuera de React y se actualizan con
   `setLatLng`, `setLatLngs`, `setOpacity` y `setStyle`. React solo re-renderiza al cambiar de fase.
+- **Vista 3D con MapLibre.** `maplibre-gl` (unos 800 KB) se descarga solo al abrir el 3D. El
+  relieve es el modelo abierto Terrain Tiles de AWS (Terrarium, sin clave). El mapa Leaflet sigue
+  montado y oculto, así que al volver a 2D conserva su estado; `mapBridge` mueve la cámara de los
+  dos (MapLibre usa un nivel de zoom menos). MapLibre 6 corre en un worker: su URL se obtiene con
+  `new URL('maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url)`, que Turbopack sirve como
+  archivo estático. Los servicios dinámicos IGAC/DANE no se piden en 3D.
 - **Solo cliente.** Leaflet necesita `window` y el estado viene de `localStorage`, así que el
   editor y el mapa se cargan con `next/dynamic` y `ssr: false`.
 
@@ -219,6 +256,6 @@ vercel --prod # producción
 ```
 
 La aplicación es estática y no tiene backend: cada navegador guarda su propio escenario.
-Los mosaicos del mapa vienen de Esri, OpenTopoMap, OpenStreetMap y CARTO; la cartografía oficial,
+Los mosaicos del mapa vienen de Esri, OpenTopoMap, OpenStreetMap y CARTO; el relieve 3D, de Terrain Tiles (AWS); la cartografía oficial,
 del IGAC y el DANE; y la búsqueda de lugares, de Nominatim (OpenStreetMap). Respeta sus
 condiciones de uso si el tráfico crece.

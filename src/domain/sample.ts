@@ -1,3 +1,5 @@
+import { airAssaultScenario } from './airAssault';
+import { argosScenario } from './argos';
 import { exerciseScenario } from './exercise';
 import { uid } from './id';
 import type {
@@ -216,4 +218,6 @@ export function sampleScenario(): Scenario {
 export const EXAMPLES: ReadonlyArray<{ name: string; create: () => Scenario }> = [
   { name: 'Ejercicio Cordillera', create: () => sampleScenario() },
   { name: 'Ejercicio Halcón (inserción aérea)', create: () => exerciseScenario() },
+  { name: 'Ejercicio Colibrí (asalto aéreo con helicóptero)', create: () => airAssaultScenario() },
+  { name: 'Ejercicio Argos (inteligencia integrada)', create: () => argosScenario() },
 ];

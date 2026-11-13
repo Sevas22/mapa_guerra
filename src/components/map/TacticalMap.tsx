@@ -128,7 +128,7 @@ export default function TacticalMap() {
       <MapStyleControl />
       <div
         ref={readout}
-        className="pointer-events-none absolute right-2.5 bottom-[22px] z-[500] rounded-[3px] border border-line bg-[rgba(16,22,31,.88)] px-2 py-[3px] font-mono text-xs text-soft tabular-nums"
+        className="cursor-readout pointer-events-none absolute right-2.5 bottom-[22px] z-[500] rounded-[3px] border border-line bg-[rgba(16,22,31,.88)] px-2 py-[3px] font-mono text-xs text-soft tabular-nums"
       >
         —
       </div>

@@ -12,6 +12,9 @@ import {
   TRAVEL_MODES,
   UNIT_TYPES,
 } from './ids';
+import { EDGE_KINDS, NODE_KINDS, TAB_SIDES } from './linkChart';
+import { MODEL_BASES, PAYLOADS, TAIL_TYPES, normalizeModel } from './models3d';
+import { PROFILE_ROLES, SOURCE_TYPES } from './profiles';
 import type { Scenario } from './types';
 
 /**
@@ -25,7 +28,11 @@ export { FACTION_IDS, LINE_TYPES, POINT_TYPES, UNIT_TYPES } from './ids';
 const coord = z.number().finite();
 export const LatLngTupleSchema = z.tuple([coord, coord]);
 
-export const PointFrameSchema = z.object({ lat: coord, lng: coord });
+export const PointFrameSchema = z.object({
+  lat: coord,
+  lng: coord,
+  alt: z.number().finite().min(0).max(20000).optional().catch(undefined),
+});
 export const LineFrameSchema = z.object({ pts: z.array(LatLngTupleSchema).min(2) });
 
 const phaseKey = z.string().regex(/^\d+$/, 'La clave de un frame debe ser un número de fase');
@@ -103,6 +110,8 @@ const symbolFields = {
 export const UnitObjectSchema = z.object({
   ...base,
   ...symbolFields,
+  model3d: z.string().min(1).optional().catch(undefined),
+  altitude: z.number().finite().min(0).max(20000).optional().catch(undefined),
   kind: z.literal('unit'),
   type: z.enum(UNIT_TYPES).catch('infanteria'),
   echelon: z.string().default(''),
@@ -112,6 +121,9 @@ export const UnitObjectSchema = z.object({
 export const PointObjectSchema = z.object({
   ...base,
   ...symbolFields,
+  profileIds: z.array(z.string()).optional().catch(undefined),
+  chartId: z.string().optional().catch(undefined),
+  cardWidth: z.number().min(120).max(2000).optional().catch(undefined),
   kind: z.literal('point'),
   type: z.enum(POINT_TYPES).catch('punto'),
   echelon: z.string().optional(),
@@ -148,7 +160,119 @@ export const PhaseSchema = z.object({
   media: mediaList,
 });
 
+const str = z.string().catch('').default('');
+
+export const ProfileSchema = z.object({
+  id: z
+    .string()
+    .min(1)
+    .default(() => 'pf' + uid()),
+  nombre: str,
+  alias: str,
+  grado: str,
+  cargo: str,
+  organizacion: str,
+  estructura: str,
+  rol: z.enum(PROFILE_ROLES).catch('persona'),
+  fuente: z.enum(SOURCE_TYPES).optional().catch(undefined),
+  telefono: str,
+  documento: str,
+  ubicacion: str,
+  notas: str,
+  foto: z.string().optional().catch(undefined),
+});
+
+const num = z.number().finite();
+
+export const LinkChartSchema = z.object({
+  id: z
+    .string()
+    .min(1)
+    .default(() => 'gr' + uid()),
+  title: str,
+  legend: z.boolean().catch(true).default(true),
+  nodes: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        kind: z.enum(NODE_KINDS).catch('persona'),
+        x: num,
+        y: num,
+        label: str,
+        sub: str,
+        profileId: z.string().optional().catch(undefined),
+        source: z.enum(SOURCE_TYPES).optional().catch(undefined),
+        photo: z.string().optional().catch(undefined),
+      }),
+    )
+    .default([]),
+  groups: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        title: str,
+        x: num,
+        y: num,
+        w: num.min(20),
+        h: num.min(20),
+        tab: z.enum(TAB_SIDES).catch('bottom'),
+      }),
+    )
+    .default([]),
+  edges: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        from: z.string(),
+        to: z.string(),
+        kind: z.enum(EDGE_KINDS).catch('confirmado'),
+        arrow: z.boolean().catch(true).default(true),
+        label: str,
+      }),
+    )
+    .default([]),
+});
+
+export const Model3DSchema = z
+  .object({
+    id: z
+      .string()
+      .min(1)
+      .default(() => 'md' + uid()),
+    name: z.string().catch('Modelo').default('Modelo'),
+    base: z.enum(MODEL_BASES).catch('avion'),
+    color: z.string().catch('#8a949c').default('#8a949c'),
+    accent: z.string().catch('#2b3440').default('#2b3440'),
+    length: num.positive().catch(10),
+    span: num.positive().catch(10),
+    engines: num.catch(1).default(1),
+    blades: num.catch(2).default(2),
+    tail: z.enum(TAIL_TYPES).catch('convencional'),
+    payload: z.enum(PAYLOADS).catch('ninguna'),
+    highWing: z.boolean().catch(false).default(false),
+    code: str,
+  })
+  .transform(normalizeModel);
+
+/** Lista tolerante: los elementos mal formados se descartan; vacía = sin la clave. */
+const listOf = <T extends z.ZodType>(item: T) =>
+  z
+    .array(z.unknown())
+    .optional()
+    .catch(undefined)
+    .transform((arr) => {
+      if (!arr) return undefined;
+      const ok = arr.flatMap((x) => {
+        const r = item.safeParse(x);
+        return r.success ? [r.data as z.output<T>] : [];
+      });
+      return ok.length ? ok : undefined;
+    });
+
 export const ScenarioSchema = z.object({
+  profiles: listOf(ProfileSchema),
+  charts: listOf(LinkChartSchema),
+  models: listOf(Model3DSchema),
   v: z.literal(1).default(1),
   name: z.string().default('Escenario sin título'),
   speed: z.number().positive().catch(2),

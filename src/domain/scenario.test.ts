@@ -149,7 +149,8 @@ describe('símbolos', () => {
     for (const type of UNIT_TYPES)
       for (const faction of FACTION_IDS) expect(isSvg(unitSVG({ type, faction }))).toBe(true);
     for (const type of POINT_TYPES) {
-      if (type === 'texto') continue;
+      // El rótulo y las fichas (perfiles, grafos) no son símbolos SVG.
+      if (type === 'texto' || type === 'perfil' || type === 'grafo') continue;
       expect(isSvg(pointSVG(type, { color: '#f00', fill: '#0f0' }))).toBe(true);
     }
   });

@@ -2,6 +2,7 @@
 
 import { TileLayer } from 'react-leaflet';
 import { OVERLAYS, basemapById, isArcGIS, type LayerSource } from '@/domain/basemaps';
+import { useEditorStore } from '@/store/editorStore';
 import { useMapStyleStore } from '@/store/mapStyleStore';
 import { DynamicImageLayer } from './DynamicImageLayer';
 
@@ -38,7 +39,10 @@ function Layer({
 export function BaseLayers() {
   const baseId = useMapStyleStore((s) => s.baseId);
   const overlays = useMapStyleStore((s) => s.overlays);
+  // En 3D el mapa 2D está oculto: no se piden mosaicos ni imágenes al IGAC y el DANE.
+  const view3d = useEditorStore((s) => s.view3d);
   const base = basemapById(baseId);
+  if (view3d) return null;
   return (
     <>
       {/* La clave fuerza a recrear la capa al cambiar de proveedor. */}

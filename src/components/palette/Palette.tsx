@@ -16,6 +16,7 @@ import {
 import { pointOpts, pointSVG, previewLine, textPreviewSVG, unitSVG } from '@/domain/symbols';
 import type { FactionId, LineType, PointType, UnitType } from '@/domain/types';
 import { useEditorStore, type Tool } from '@/store/editorStore';
+import { useWorkspace, type WorkspaceId } from '@/store/workspaceStore';
 import { GotoCoords } from './GotoCoords';
 
 const UNIT_GROUPS: UnitGroup[] = [
@@ -75,6 +76,54 @@ function ToolButton({ spec, name, icon }: { spec: ToolSpec; name: string; icon: 
   );
 }
 
+const WORKSPACES: { id: WorkspaceId; name: string; desc: string; icon: string }[] = [
+  {
+    id: 'models',
+    name: 'Taller 3D',
+    desc: 'Modela aviones, helicópteros y drones y velos volar en 3D',
+    icon: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M4 11l8 2 8-2M8 19l4-1 4 1"/></svg>',
+  },
+  {
+    id: 'profiles',
+    name: 'Perfiles de operación',
+    desc: 'Fichas de las personas relacionadas con la operación',
+    icon: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-2 2-3 3.5-3s2.9 1 3.5 3M14 9h4M14 13h4"/></svg>',
+  },
+  {
+    id: 'charts',
+    name: 'Grafos de vínculos',
+    desc: 'Redes de la amenaza, estructuras, fuentes y convenciones',
+    icon: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l4 4-4 4-4-4z" fill="currentColor" fill-opacity=".35"/><rect x="2.5" y="15" width="7" height="6"/><circle cx="18" cy="18" r="3"/><path d="M12 11v2H6v2M12 13h6v2"/></svg>',
+  },
+];
+
+/** Accesos a las áreas de trabajo a pantalla completa. */
+function WorkspaceButtons() {
+  const show = useWorkspace((s) => s.show);
+  return (
+    <section className="sec">
+      <h2 className="sec-h">Herramientas</h2>
+      <div className="grid gap-1.5">
+        {WORKSPACES.map((w) => (
+          <button
+            key={w.id}
+            type="button"
+            title={w.desc}
+            className="flex min-w-0 items-center gap-2 overflow-hidden rounded border border-line bg-bg px-2 py-1.5 text-left hover:border-muted"
+            onClick={() => show(w.id)}
+          >
+            <span className="text-accent" dangerouslySetInnerHTML={{ __html: w.icon }} />
+            <span className="min-w-0">
+              <span className="block text-[13px] text-fg">{w.name}</span>
+              <span className="block truncate text-[11px] text-muted">{w.desc}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /** Columna izquierda: coordenadas, bando y herramientas. */
 export function Palette() {
   const faction = useEditorStore((s) => s.faction);
@@ -89,6 +138,7 @@ export function Palette() {
   return (
     <>
       <GotoCoords />
+      <WorkspaceButtons />
       <section className="sec">
         <h2 className="sec-h">Identidad</h2>
         <div className="grid grid-cols-2 gap-1.5">

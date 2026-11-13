@@ -320,6 +320,142 @@
   .placing .leaflet-interactive {
     cursor: crosshair;
   }
+
+  /* Fichas en el mapa: perfiles de operación y grafos de vínculos. */
+  .doccard {
+    overflow: hidden;
+    border-radius: 4px;
+    background: #f7f5ef;
+    color: #14181d;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+    border: 1px solid #3b2a12;
+    font: 400 11px/1.3 var(--font-sans);
+    cursor: pointer;
+  }
+  .doccard.sel {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .doccard svg {
+    display: block;
+  }
+  .pc-h {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 28px;
+    padding: 0 10px;
+    background: #8f1016;
+    color: #fff;
+    font: 700 13px/1 var(--font-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .pc-h span {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    opacity: 0.8;
+  }
+  .pc-one {
+    display: flex;
+    gap: 9px;
+    padding: 9px;
+  }
+  .pcard img,
+  .pc-nofoto {
+    flex: none;
+    object-fit: cover;
+    border: 1px solid #999;
+    background: #dcdcd6;
+  }
+  .pc-nofoto {
+    display: grid;
+    place-items: center;
+    color: #6b6f75;
+  }
+  .pc-data {
+    min-width: 0;
+    flex: 1;
+  }
+  .pc-name {
+    font-weight: 700;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pc-f {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #3a4048;
+  }
+  .pc-f b {
+    color: #14181d;
+    font-weight: 600;
+  }
+  .pc-tag {
+    display: inline-block;
+    margin-bottom: 2px;
+    padding: 0 5px;
+    border-left: 4px solid var(--tag);
+    background: #e7e4da;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .pc-list {
+    display: grid;
+    gap: 0 6px;
+    padding: 3px 6px;
+  }
+  .pc-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 46px;
+    border-bottom: 1px solid #d9d5c8;
+    border-left: 4px solid var(--tag);
+    padding-left: 5px;
+  }
+  .pc-empty {
+    padding: 12px;
+    color: #5b6068;
+    text-align: center;
+  }
+
+  /* Áreas de trabajo a pantalla completa (taller 3D, perfiles, grafos). */
+  .ws {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    background: var(--color-bg);
+  }
+  .ws-h {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--color-line);
+    background: var(--color-panel);
+  }
+  .ws-h h2 {
+    font: 700 19px/1 var(--font-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .ws-body {
+    display: grid;
+    min-height: 0;
+  }
+  .ws-side {
+    min-height: 0;
+    overflow: auto;
+    background: var(--color-panel);
+  }
 }
 
 /* Ajustes de Leaflet al tema oscuro. */
@@ -431,4 +567,56 @@
   font: 500 11px var(--font-mono);
   color: #ffe9a8;
   text-align: center;
+}
+
+/* Vista 3D (MapLibre). El mapa 2D sigue montado pero oculto, para conservar su estado.
+   Se ocultan también los descendientes: Leaflet da `visibility` propia a mosaicos y controles. */
+.area-map[data-view='3d'] .leaflet-container,
+.area-map[data-view='3d'] .leaflet-container *,
+.area-map[data-view='3d'] .cursor-readout {
+  visibility: hidden !important;
+}
+.maplibregl-map {
+  font-family: var(--font-sans);
+}
+.maplibregl-marker .symwrap {
+  cursor: pointer;
+}
+/* Etiquetas de trazos en 3D: mismo aspecto que los rótulos de Leaflet (.ltip). */
+.gl-tip {
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  background: rgba(10, 14, 20, 0.8);
+  color: #fff;
+  font: 600 12px var(--font-sans);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+.gl-tip .area-badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 7px 0 5px;
+  background: #fff;
+  color: #e31e24;
+  border: 1.5px solid #e31e24;
+  border-radius: 3px 10px 10px 3px;
+  font: 700 12px/1.35 var(--font-display);
+  letter-spacing: 0.05em;
+}
+.gl-tip .trip {
+  display: block;
+  margin-top: 1px;
+  font: 500 11px var(--font-mono);
+  color: #ffe9a8;
+  text-align: center;
+}
+.maplibregl-ctrl-group {
+  background: var(--color-panel) !important;
+  border: 1px solid var(--color-line);
+}
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--color-line) !important;
+}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1);
 }

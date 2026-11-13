@@ -44,7 +44,7 @@ function LoadingBadge() {
   return (
     <div
       role="status"
-      className={`pointer-events-none absolute top-[124px] right-2.5 z-[650] rounded border px-2 py-1 font-mono text-[11px] ${
+      className={`pointer-events-none absolute top-[164px] right-2.5 z-[650] rounded border px-2 py-1 font-mono text-[11px] ${
         failed && !loading
           ? 'border-danger bg-[rgba(16,22,31,.9)] text-danger'
           : 'border-line bg-[rgba(16,22,31,.9)] text-accent'

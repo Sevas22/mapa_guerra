@@ -1,6 +1,9 @@
 /** Distancias, tiempos de desplazamiento y resumen de fuerzas. Lógica pura. */
 import { frameAt, visibleAt } from './timeline';
-import type { FactionId, LatLngTuple, Scenario, Travel, TravelMode } from './types';
+import type { FactionId, LatLngTuple, LineType, Scenario, Travel, TravelMode } from './types';
+
+/** Solo las rutas y los ejes de avance tienen medio de desplazamiento, distancia y tiempo. */
+export const hasTravel = (type: LineType): boolean => type === 'ruta' || type === 'eje';
 
 export const TRAVEL_DEFS: Record<TravelMode, { name: string; speed: number }> = {
   pie: { name: 'A pie', speed: 2.5 },

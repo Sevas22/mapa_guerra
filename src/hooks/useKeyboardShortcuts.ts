@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
+import { useWorkspace } from '@/store/workspaceStore';
 import { togglePlayback } from './usePlayback';
 
 const isTypingTarget = (el: Element | null): boolean =>
@@ -9,7 +10,8 @@ const isTypingTarget = (el: Element | null): boolean =>
 
 /**
  * ← → cambian de fase, Espacio reproduce o pausa, Supr borra la selección,
- * V selecciona, Enter termina un trazo y Esc suelta la herramienta.
+ * V selecciona, Enter termina un trazo, Esc suelta la herramienta, Ctrl+Z deshace y
+ * Ctrl+Y o Ctrl+Mayús+Z rehacen.
  * Con el foco en un campo de texto solo responde Esc (que además quita el foco).
  */
 export function useKeyboardShortcuts(): void {
@@ -24,7 +26,20 @@ export function useKeyboardShortcuts(): void {
         if (typing && active instanceof HTMLElement) active.blur();
         return;
       }
-      if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (typing) return;
+      // Ctrl+Z deshace; Ctrl+Y o Ctrl+Mayús+Z rehacen (Cmd en Mac).
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        const k = e.key.toLowerCase();
+        if (k === 'z' || k === 'y') {
+          e.preventDefault();
+          if (k === 'y' || e.shiftKey) st.redo();
+          else st.undo();
+        }
+        return;
+      }
+      if (e.altKey) return;
+      // Con un área de trabajo abierta (taller 3D, perfiles, grafos) el mapa no recibe teclas.
+      if (useWorkspace.getState().open) return;
       if (e.key === 'Enter' && st.draft) {
         st.finishDraft();
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && st.selectedId) {

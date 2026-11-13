@@ -84,6 +84,9 @@ export const POINT_TYPES = [
   'aeropuerto',
   'antena',
   'lugar',
+  // Fichas que se colocan en el mapa.
+  'perfil',
+  'grafo',
 ] as const;
 
 /** Trazos, áreas (AO, ANI, ABI) y tareas tácticas del capítulo 9. */

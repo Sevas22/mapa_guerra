@@ -79,7 +79,7 @@ export function interpolatePts(a: LatLngTuple[], b: LatLngTuple[], t: number): L
 }
 
 export type RenderState =
-  | { kind: 'point'; opacity: number; lat: number; lng: number }
+  | { kind: 'point'; opacity: number; lat: number; lng: number; alt?: number }
   | { kind: 'line'; opacity: number; pts: LatLngTuple[] };
 
 /** Umbral por debajo del cual el objeto se oculta. */
@@ -102,7 +102,15 @@ export function objectStateAt(o: MapObject, f: number, phaseCount: number): Rend
   }
   const A = frameAt(o, va ? p : q);
   const B = t > 0 && vb ? frameAt(o, q) : A;
-  return { kind: 'point', opacity: op, lat: lerp(A.lat, B.lat, t), lng: lerp(A.lng, B.lng, t) };
+  const st: RenderState = {
+    kind: 'point',
+    opacity: op,
+    lat: lerp(A.lat, B.lat, t),
+    lng: lerp(A.lng, B.lng, t),
+  };
+  // Altura de vuelo por fase (despegues y aterrizajes de los modelos 3D).
+  if (A.alt != null || B.alt != null) st.alt = lerp(A.alt ?? B.alt!, B.alt ?? A.alt!, t);
+  return st;
 }
 
 /** Reindexa las claves de frames con `fn`; descarta las que devuelvan `null`. */

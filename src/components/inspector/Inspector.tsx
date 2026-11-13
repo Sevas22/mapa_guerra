@@ -14,12 +14,12 @@ import {
   plainName,
   usesIconText,
 } from '@/domain/catalog';
-import { isTaskType } from '@/domain/tasks';
 import { frameAt, hasOwnFrame, visibleAt } from '@/domain/timeline';
 import {
   KM_PER_NM,
   TRAVEL_DEFS,
   forceSummary,
+  hasTravel,
   pathKm,
   travelSpeed,
   travelSummary,
@@ -34,6 +34,10 @@ import type {
   SymbolStatus,
   TravelMode,
 } from '@/domain/types';
+import { isDocPoint } from '@/domain/docCards';
+import { BASE_DEFS, DEFAULT_ALTITUDE } from '@/domain/models3d';
+import { ROLE_DEFS, ROLE_ORDER, profileTitle } from '@/domain/profiles';
+import { useWorkspace } from '@/store/workspaceStore';
 import { MediaEditor } from '../media/Media';
 import { currentView } from '@/lib/mapBridge';
 import { selectSelected, useEditorStore } from '@/store/editorStore';
@@ -268,7 +272,7 @@ function CardSection({ o }: { o: MapObject }) {
 function TravelSection({ o }: { o: Extract<MapObject, { kind: 'line' }> }) {
   const current = useEditorStore((s) => s.current);
   const update = useEditorStore((s) => s.updateObject);
-  if (isTaskType(o.type) || LINES[o.type]?.area || o.type === 'zona') return null;
+  if (!hasTravel(o.type)) return null;
   const pts = frameAt(o, current).pts;
   const km = pathKm(pts);
   const t = o.travel;
@@ -501,14 +505,187 @@ function SymbolFieldsEditor({ o }: { o: MapObject }) {
   );
 }
 
+/** Modelo 3D de una unidad (aeronave o dron) y su altura de vuelo. */
+function ModelSection({ o }: { o: Extract<MapObject, { kind: 'unit' }> }) {
+  const models = useEditorStore((s) => s.scenario.models);
+  const update = useEditorStore((s) => s.updateObject);
+  const show = useWorkspace((s) => s.show);
+  const current = useEditorStore((s) => s.current);
+  const setFrame = useEditorStore((s) => s.setFrame);
+  const m = models?.find((x) => x.id === o.model3d);
+  const frameAlt = hasOwnFrame(o, current) ? o.frames[current]?.alt : undefined;
+  return (
+    <section className="sec">
+      <h2 className="sec-h">Modelo 3D</h2>
+      <label className="field">
+        Aeronave o dron
+        <select
+          value={o.model3d ?? ''}
+          onChange={(e) => {
+            const id = e.target.value;
+            const next = models?.find((x) => x.id === id);
+            update(
+              o.id,
+              next
+                ? { model3d: id, altitude: o.altitude ?? DEFAULT_ALTITUDE[next.base] }
+                : { model3d: undefined },
+            );
+          }}
+        >
+          <option value="">Sin modelo</option>
+          {models?.map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.name} · {BASE_DEFS[x.base].name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {m ? (
+        <div className="row">
+          <label className="field">
+            Altura general (m)
+            <input
+              type="number"
+              min={0}
+              max={20000}
+              step={10}
+              value={o.altitude ?? 0}
+              onChange={(e) => update(o.id, { altitude: Math.max(0, Number(e.target.value) || 0) })}
+            />
+          </label>
+          <label className="field" title="Vacío = altura general. 0 = posado en tierra.">
+            En esta fase (m)
+            <input
+              type="number"
+              min={0}
+              max={20000}
+              step={10}
+              placeholder={String(o.altitude ?? 0)}
+              value={frameAlt ?? ''}
+              onChange={(e) => {
+                const f = frameAt(o, current);
+                const v = e.target.value;
+                setFrame(o.id, {
+                  lat: f.lat,
+                  lng: f.lng,
+                  alt: v === '' ? undefined : Math.max(0, Number(v) || 0),
+                });
+              }}
+            />
+          </label>
+        </div>
+      ) : null}
+      <button type="button" className="btn" onClick={() => show('models', o.model3d ?? null)}>
+        {m ? 'Editar en el taller 3D' : 'Abrir el taller 3D'}
+      </button>
+      {m ? (
+        <p className="note mt-1.5">Se ve volando en la vista 3D, orientado según su recorrido.</p>
+      ) : null}
+    </section>
+  );
+}
+
+/** Contenido de una ficha de perfiles o de grafo colocada en el mapa. */
+function DocSection({ o }: { o: Extract<MapObject, { kind: 'point' }> }) {
+  const profiles = useEditorStore((s) => s.scenario.profiles);
+  const charts = useEditorStore((s) => s.scenario.charts);
+  const update = useEditorStore((s) => s.updateObject);
+  const show = useWorkspace((s) => s.show);
+  const ids = o.profileIds ?? [];
+  const sorted = useMemo(
+    () => [...(profiles ?? [])].sort((a, b) => ROLE_ORDER[a.rol] - ROLE_ORDER[b.rol]),
+    [profiles],
+  );
+  const width = o.cardWidth ?? (o.type === 'grafo' ? 460 : ids.length > 8 ? 520 : 300);
+  return (
+    <section className="sec">
+      <h2 className="sec-h">{o.type === 'grafo' ? 'Grafo de vínculos' : 'Perfiles de la ficha'}</h2>
+      {o.type === 'grafo' ? (
+        <>
+          <label className="field">
+            Grafo
+            <select
+              value={o.chartId ?? ''}
+              onChange={(e) => update(o.id, { chartId: e.target.value })}
+            >
+              <option value="">Ninguno</option>
+              {charts?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title || 'Sin título'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="btn" onClick={() => show('charts', o.chartId ?? null)}>
+            Editar el grafo
+          </button>
+        </>
+      ) : (
+        <>
+          {sorted.length ? (
+            <ul className="mb-2 max-h-[220px] overflow-auto rounded border border-line bg-bg">
+              {sorted.map((p) => (
+                <li key={p.id}>
+                  <label className="flex items-center gap-2 px-2 py-1 text-[13px]">
+                    <input
+                      type="checkbox"
+                      className="w-auto!"
+                      checked={ids.includes(p.id)}
+                      onChange={() =>
+                        update(o.id, {
+                          profileIds: ids.includes(p.id)
+                            ? ids.filter((x) => x !== p.id)
+                            : [...ids, p.id],
+                        })
+                      }
+                    />
+                    <i
+                      className="inline-block size-2 flex-none rounded-full"
+                      style={{ background: ROLE_DEFS[p.rol].color }}
+                    />
+                    <span className="truncate">{profileTitle(p)}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="note">Aún no hay perfiles en el escenario.</p>
+          )}
+          <button type="button" className="btn" onClick={() => show('profiles', ids[0] ?? null)}>
+            Abrir perfiles de operación
+          </button>
+        </>
+      )}
+      <label className="field mt-2">
+        <span className="flex justify-between">
+          Ancho de la ficha <span className="font-mono text-fg">{width} px</span>
+        </span>
+        <input
+          type="range"
+          min={180}
+          max={1200}
+          step={10}
+          value={width}
+          onChange={(e) => update(o.id, { cardWidth: Number(e.target.value) })}
+        />
+      </label>
+    </section>
+  );
+}
+
 function ObjectInspector({ o }: { o: MapObject }) {
   const phases = useEditorStore((s) => s.scenario.phases);
   const update = useEditorStore((s) => s.updateObject);
   const duplicate = useEditorStore((s) => s.duplicateSelected);
   const remove = useEditorStore((s) => s.deleteSelected);
   const select = useEditorStore((s) => s.select);
-  const types: Record<string, { name: string }> =
+  const isDoc = isDocPoint(o);
+  const allTypes: Record<string, { name: string; group?: string }> =
     o.kind === 'unit' ? UNITS : o.kind === 'point' ? POINTS : LINES;
+  // Las fichas no se convierten en símbolos ni al revés.
+  const types = Object.fromEntries(
+    Object.entries(allTypes).filter(([k, x]) => (isDoc ? k === o.type : x.group !== 'Fichas')),
+  );
 
   return (
     <>
@@ -551,7 +728,7 @@ function ObjectInspector({ o }: { o: MapObject }) {
             </select>
           </label>
         </div>
-        <SymbolFieldsEditor o={o} />
+        {isDoc ? null : <SymbolFieldsEditor o={o} />}
         <label className="field">
           Notas
           <textarea
@@ -589,7 +766,8 @@ function ObjectInspector({ o }: { o: MapObject }) {
         <PositionSection o={o} />
         {o.kind === 'line' ? <TravelSection o={o} /> : null}
       </section>
-      <CardSection o={o} />
+      {o.kind === 'unit' ? <ModelSection o={o} /> : null}
+      {o.kind === 'point' && isDoc ? <DocSection o={o} /> : <CardSection o={o} />}
       <section className="sec">
         <h2 className="sec-h">Imágenes y videos</h2>
         <MediaEditor media={o.media} onChange={(media) => update(o.id, { media })} />

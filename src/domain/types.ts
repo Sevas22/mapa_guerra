@@ -4,6 +4,9 @@
  * desde el HTML se puedan importar sin cambios.
  */
 
+import type { LinkChart } from './linkChart';
+import type { Model3D } from './models3d';
+import type { Profile } from './profiles';
 import type {
   EFFECTIVENESS_IDS,
   FACTION_IDS,
@@ -64,6 +67,8 @@ export type LatLngTuple = [number, number];
 export interface PointFrame {
   lat: number;
   lng: number;
+  /** Altura de vuelo sobre el terreno en esta fase, en metros (solo para modelos 3D). */
+  alt?: number;
 }
 
 export interface LineFrame {
@@ -113,14 +118,35 @@ export interface SymbolFields {
   card?: UnitCard;
 }
 
-export interface UnitObject extends BaseObject, SymbolFields {
+/** Modelo 3D (aeronave o dron) que acompaña a la unidad en la vista 3D. */
+export interface ModelFields {
+  /** Id de un modelo de `Scenario.models`. */
+  model3d?: string;
+  /** Altura de vuelo sobre el terreno, en metros. */
+  altitude?: number;
+}
+
+/**
+ * Fichas que se colocan en el mapa: perfiles de operación (`perfil`) o un grafo de vínculos
+ * (`grafo`). El contenido vive en el escenario y el punto solo lo referencia.
+ */
+export interface DocFields {
+  /** Perfiles que muestra la ficha `perfil`, en orden. */
+  profileIds?: string[];
+  /** Grafo que muestra la ficha `grafo`. */
+  chartId?: string;
+  /** Ancho de la ficha en pantalla, en píxeles. */
+  cardWidth?: number;
+}
+
+export interface UnitObject extends BaseObject, SymbolFields, ModelFields {
   kind: 'unit';
   type: UnitType;
   echelon: string;
   frames: Frames<PointFrame>;
 }
 
-export interface PointObject extends BaseObject, SymbolFields {
+export interface PointObject extends BaseObject, SymbolFields, DocFields {
   kind: 'point';
   type: PointType;
   /** El prototipo guarda `echelon: ""` también en puntos; se conserva si viene. */
@@ -167,6 +193,12 @@ export interface Scenario {
   speed: number;
   phases: Phase[];
   objects: MapObject[];
+  /** Perfiles de operación: personas relacionadas con la operación. */
+  profiles?: Profile[];
+  /** Grafos de análisis de vínculos. */
+  charts?: LinkChart[];
+  /** Aeronaves y drones modelados en el taller 3D. */
+  models?: Model3D[];
   /**
    * Solo en archivos exportados: contenido de los adjuntos como data URL, por id.
    * Al importar se mueve a IndexedDB y desaparece del escenario.

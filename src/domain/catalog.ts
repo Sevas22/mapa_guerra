@@ -181,7 +181,12 @@ export const EFFECTIVENESS: ReadonlyArray<readonly [Effectiveness, string, strin
 ];
 
 export type PointGroup =
-  'Objetivos y hechos' | 'Puntos de control' | 'Aéreos' | 'Instalaciones y lugares';
+  | 'Objetivos y hechos'
+  | 'Puntos de control'
+  | 'Aéreos'
+  | 'Instalaciones y lugares'
+  /** Fichas de perfiles y grafos: se colocan desde sus herramientas, no desde la paleta. */
+  | 'Fichas';
 
 export interface PointDef {
   name: string;
@@ -388,6 +393,20 @@ export const POINTS: Record<PointType, PointDef> = {
     size: [0, 0],
     anchor: [0, 0],
     label: 'Rótulo',
+  },
+  perfil: {
+    name: 'Ficha de perfiles',
+    group: 'Fichas',
+    size: [0, 0],
+    anchor: [0, 0],
+    label: '',
+  },
+  grafo: {
+    name: 'Grafo de vínculos',
+    group: 'Fichas',
+    size: [0, 0],
+    anchor: [0, 0],
+    label: '',
   },
 };
 

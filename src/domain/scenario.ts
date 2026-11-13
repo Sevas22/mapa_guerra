@@ -2,7 +2,9 @@
 import { POINTS, forceById } from './catalog';
 import { uid } from './id';
 import type {
+  DocFields,
   FactionId,
+  ModelFields,
   LineFrame,
   LineType,
   MapObject,
@@ -102,6 +104,11 @@ export function setObjectFrame(
       if (o.id !== id) return o;
       const isLine = 'pts' in frame;
       if (isLine !== (o.kind === 'line')) return o;
+      // Al arrastrar un símbolo se conserva la altura de vuelo que tuviera en esa fase.
+      if (!isLine && o.kind !== 'line' && !('alt' in frame)) {
+        const prev = o.frames[phase]?.alt;
+        if (prev != null) frame = { ...frame, alt: prev };
+      }
       return { ...o, frames: { ...o.frames, [phase]: frame } } as MapObject;
     }),
   };
@@ -114,7 +121,9 @@ export type ObjectPatch = Partial<
     echelon: string;
     media: MediaRef[];
     travel: Travel;
-  } & SymbolFields
+  } & SymbolFields &
+    ModelFields &
+    DocFields
 >;
 
 /** Aplica cambios de propiedades a un objeto. Ignora tipos que no correspondan a su `kind`. */
@@ -139,6 +148,14 @@ export function patchObject(s: Scenario, id: string, patch: ObjectPatch): Scenar
         const empty = !c || (c.pax == null && !c.medios && !c.mision);
         if (empty) delete (next as SymbolFields).card;
       }
+      const loose = next as Partial<ModelFields & DocFields>;
+      if ('model3d' in loose && !loose.model3d) {
+        delete loose.model3d;
+        delete loose.altitude;
+      }
+      if ('altitude' in loose && loose.altitude == null) delete loose.altitude;
+      if ('chartId' in loose && !loose.chartId) delete loose.chartId;
+      if ('cardWidth' in loose && !loose.cardWidth) delete loose.cardWidth;
       if ('travel' in next && !(next as { travel?: Travel }).travel)
         delete (next as { travel?: Travel }).travel;
       return next;
@@ -164,4 +181,63 @@ export function dedupeVertices<T>(
     clean.push(p);
   }
   return clean;
+}
+
+/** Colecciones del escenario que no son objetos del mapa. */
+export type CollectionKey = 'profiles' | 'charts' | 'models';
+
+/** Inserta o reemplaza (por `id`) un elemento de una colección. */
+export function upsertItem<K extends CollectionKey>(
+  s: Scenario,
+  key: K,
+  item: NonNullable<Scenario[K]>[number],
+): Scenario {
+  const list = (s[key] ?? []) as { id: string }[];
+  const i = list.findIndex((x) => x.id === item.id);
+  const next = i < 0 ? [...list, item] : list.map((x, j) => (j === i ? item : x));
+  return { ...s, [key]: next };
+}
+
+/**
+ * Quita un elemento de una colección y las referencias de los objetos del mapa: un perfil
+ * sale de las fichas, un grafo deja su ficha vacía y un modelo deja de verse en las unidades.
+ */
+export function removeItem(s: Scenario, key: CollectionKey, id: string): Scenario {
+  const list = (s[key] ?? []) as { id: string }[];
+  const rest = list.filter((x) => x.id !== id);
+  const objects = s.objects.map((o): MapObject => {
+    if (key === 'profiles' && o.kind === 'point' && o.profileIds?.includes(id))
+      return { ...o, profileIds: o.profileIds.filter((x) => x !== id) };
+    if (key === 'charts' && o.kind === 'point' && o.chartId === id) {
+      const r = { ...o };
+      delete r.chartId;
+      return r;
+    }
+    if (key === 'models' && o.kind === 'unit' && o.model3d === id) {
+      const r = { ...o };
+      delete r.model3d;
+      delete r.altitude;
+      return r;
+    }
+    return o;
+  });
+  const out: Scenario = { ...s, objects };
+  if (rest.length) (out as Record<CollectionKey, unknown>)[key] = rest;
+  else delete out[key];
+  // Los grafos también citan perfiles.
+  if (key === 'profiles' && out.charts)
+    out.charts = out.charts.map((c) =>
+      c.nodes.some((n) => n.profileId === id)
+        ? {
+            ...c,
+            nodes: c.nodes.map((n) => {
+              if (n.profileId !== id) return n;
+              const r = { ...n };
+              delete r.profileId;
+              return r;
+            }),
+          }
+        : c,
+    );
+  return out;
 }

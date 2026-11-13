@@ -20,6 +20,8 @@ function openScenario(s: Scenario) {
 export function Header() {
   const name = useEditorStore((s) => s.scenario.name);
   const saveStatus = useEditorStore((s) => s.saveStatus);
+  const canUndo = useEditorStore((s) => s.history.past.length > 0 || !!s.draft);
+  const canRedo = useEditorStore((s) => s.history.future.length > 0 && !s.draft);
   const fileIn = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -72,6 +74,26 @@ export function Header() {
         <span className="font-mono text-xs whitespace-nowrap text-muted" aria-live="polite">
           {busy ? 'Procesando adjuntos…' : saveStatus}
         </span>
+        <button
+          type="button"
+          className="btn px-2!"
+          aria-label="Deshacer"
+          title="Deshacer (Ctrl+Z)"
+          disabled={!canUndo}
+          onClick={() => useEditorStore.getState().undo()}
+        >
+          ↶
+        </button>
+        <button
+          type="button"
+          className="btn px-2!"
+          aria-label="Rehacer"
+          title="Rehacer (Ctrl+Y o Ctrl+Mayús+Z)"
+          disabled={!canRedo}
+          onClick={() => useEditorStore.getState().redo()}
+        >
+          ↷
+        </button>
         <select
           aria-label="Abrir un ejemplo"
           className="w-auto! py-[5px]! text-[13px]"
@@ -88,7 +110,11 @@ export function Header() {
         <button type="button" className="btn" onClick={onNew}>
           Nuevo
         </button>
-        <button type="button" className="btn" onClick={() => fileIn.current?.click()}>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => confirm(CONFIRM) && fileIn.current?.click()}
+        >
           Abrir…
         </button>
         <button type="button" className="btn primary" disabled={busy} onClick={onExport}>

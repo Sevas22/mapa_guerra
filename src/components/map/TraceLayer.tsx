@@ -6,7 +6,7 @@ import { useMap } from 'react-leaflet';
 import { FACTIONS, LINES } from '@/domain/catalog';
 import { HEAD_ICON, esc, headAngle, lineStyle } from '@/domain/symbols';
 import { objectStateAt } from '@/domain/timeline';
-import { travelSummary } from '@/domain/travel';
+import { hasTravel, travelSummary } from '@/domain/travel';
 import type { LatLngTuple, LineObject } from '@/domain/types';
 import { useEditorStore } from '@/store/editorStore';
 import { useTimeSubscription } from './useTimeSubscription';
@@ -62,7 +62,7 @@ function TraceLayerImpl({ obj, selected, phaseCount }: Props) {
   }, [id, type]);
 
   const area = LINES[type]?.area;
-  const travel = obj.travel;
+  const travel = hasTravel(type) ? obj.travel : undefined;
   /** Último resumen de distancia/tiempo mostrado, para no reescribir la etiqueta en cada frame. */
   const lastSummary = useRef('');
   const tooltipHtml = useCallback(

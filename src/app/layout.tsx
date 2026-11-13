@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Barlow_Condensed, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import 'leaflet/dist/leaflet.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import './globals.css';
 
 const barlow = Barlow_Condensed({

@@ -4,7 +4,7 @@ import L from 'leaflet';
 import { memo, useCallback, useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import { round6 } from '@/domain/coords';
-import { iconSpecFor } from '@/domain/symbols';
+import { isDocPoint, markerSpecFor } from '@/domain/docCards';
 import { objectStateAt } from '@/domain/timeline';
 import type { PositionedObject } from '@/domain/types';
 import { useEditorStore } from '@/store/editorStore';
@@ -22,6 +22,10 @@ function UnitMarkerImpl({ obj, selected, phaseCount }: Props) {
   const markerRef = useRef<L.Marker | null>(null);
   const canDrag = useEditorStore((s) => s.tool.mode === 'select' && !s.playing);
   const canDragRef = useRef(canDrag);
+  // Las fichas dependen de los perfiles y grafos del escenario; el resto de símbolos no.
+  const isDoc = isDocPoint(obj);
+  const profiles = useEditorStore((s) => (isDoc ? s.scenario.profiles : undefined));
+  const charts = useEditorStore((s) => (isDoc ? s.scenario.charts : undefined));
 
   const { id, kind } = obj;
 
@@ -38,7 +42,7 @@ function UnitMarkerImpl({ obj, selected, phaseCount }: Props) {
       draggable: true,
       keyboard: false,
       riseOnHover: true,
-      zIndexOffset: kind === 'unit' ? 100 : 0,
+      zIndexOffset: kind === 'unit' ? 100 : -100,
     });
     m.on('click', (e: L.LeafletMouseEvent) =>
       useEditorStore.getState().objectClick(id, e.latlng, e.originalEvent.shiftKey),
@@ -56,8 +60,8 @@ function UnitMarkerImpl({ obj, selected, phaseCount }: Props) {
 
   // Icono: cambia con el tipo, bando, escalón, etiqueta o la selección.
   useEffect(() => {
-    markerRef.current?.setIcon(L.divIcon(iconSpecFor(obj, selected)));
-  }, [obj, selected]);
+    markerRef.current?.setIcon(L.divIcon(markerSpecFor(obj, selected, { profiles, charts })));
+  }, [obj, selected, profiles, charts]);
 
   useEffect(() => {
     canDragRef.current = canDrag;
