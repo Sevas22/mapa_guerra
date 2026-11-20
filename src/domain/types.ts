@@ -5,7 +5,7 @@
  */
 
 import type { LinkChart } from './linkChart';
-import type { Model3D } from './models3d';
+import type { CustomMesh, Model3D } from './models3d';
 import type { Profile } from './profiles';
 import type {
   EFFECTIVENESS_IDS,
@@ -199,6 +199,11 @@ export interface Scenario {
   charts?: LinkChart[];
   /** Aeronaves y drones modelados en el taller 3D. */
   models?: Model3D[];
+  /**
+   * Cuerpo humano realista (.glb) para las figuras de los perfiles: se adapta a la estatura,
+   * el peso, el somatotipo y la piel de cada persona.
+   */
+  humanMesh?: CustomMesh;
   /**
    * Solo en archivos exportados: contenido de los adjuntos como data URL, por id.
    * Al importar se mueve a IndexedDB y desaparece del escenario.

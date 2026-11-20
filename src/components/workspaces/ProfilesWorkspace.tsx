@@ -22,6 +22,7 @@ import type { PointObject } from '@/domain/types';
 import { downloadText, imageToDataUrl } from '@/lib/imageResize';
 import { useEditorStore } from '@/store/editorStore';
 import { useWorkspace } from '@/store/workspaceStore';
+import MorphologyPanel from './MorphologyPanel';
 
 const EMPTY: Profile[] = [];
 
@@ -317,7 +318,7 @@ export default function ProfilesWorkspace() {
 
         <main className="min-h-0 overflow-auto">
           {p ? (
-            <div className="mx-auto max-w-[640px] p-4">
+            <div className="mx-auto max-w-[760px] p-4">
               <div className="mb-4 flex gap-4">
                 <button
                   type="button"
@@ -407,6 +408,7 @@ export default function ProfilesWorkspace() {
                   onChange={(e) => set({ notas: e.target.value })}
                 />
               </label>
+              <MorphologyPanel profile={p} set={set} />
               <div className="mt-3 flex gap-2">
                 <button type="button" className="btn" onClick={() => place([p.id])}>
                   Colocar esta ficha en el mapa

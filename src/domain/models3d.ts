@@ -1,105 +1,545 @@
 /**
- * Taller 3D: aeronaves y drones paramétricos. Un modelo es una receta pequeña (tipo base,
- * medidas, colores, motores, cola, carga) que se convierte en piezas geométricas simples.
- * Esta parte es pura: no depende de three.js, así que se puede probar y guardar en el JSON.
+ * Taller 3D: aeronaves, vehículos terrestres, embarcaciones e infantería paramétricos. Un
+ * modelo es una receta pequeña (tipo base, variante, medidas, colores, cantidad, carga) que se
+ * convierte en piezas geométricas (`model3d/parts`). Esta parte es pura: no depende de
+ * three.js, así que se puede probar y guardar en el JSON.
  *
- * Ejes del modelo, en metros: x hacia la nariz, y hacia arriba, z hacia el ala derecha.
+ * Ejes del modelo, en metros: x hacia el frente, y hacia arriba, z hacia la derecha. Las
+ * aeronaves se centran en el origen; los vehículos y la infantería apoyan en y = 0 y las
+ * embarcaciones tienen la línea de flotación en y = 0.
  */
 import { uid } from './id';
+import type { FacialHair, HairStyle, Sex, Somatotype } from './morphology';
+import type { UnitType } from './types';
+import { helicopterParts, jetParts, multirotorParts, planeParts } from './model3d/air';
+import {
+  apcParts,
+  artilleryParts,
+  lightVehicleParts,
+  pickupParts,
+  tankParts,
+  truckParts,
+} from './model3d/ground';
+import { infantryParts } from './model3d/people';
+import { boatParts, shipParts, submarineParts } from './model3d/sea';
+import { partsBounds, type Part } from './model3d/parts';
 
-export const MODEL_BASES = ['avion', 'helicoptero', 'dron-multirrotor', 'dron-ala-fija'] as const;
+export type { Part, Vec3 } from './model3d/parts';
+export { partsBounds } from './model3d/parts';
+
+export const MODEL_BASES = [
+  'avion',
+  'caza',
+  'helicoptero',
+  'dron-multirrotor',
+  'dron-ala-fija',
+  'tanque',
+  'blindado',
+  'camion',
+  'camioneta',
+  'vehiculo-ligero',
+  'artilleria',
+  'lancha',
+  'buque',
+  'submarino',
+  'soldados',
+] as const;
 export type ModelBase = (typeof MODEL_BASES)[number];
 
 export const TAIL_TYPES = ['convencional', 'en-t', 'en-v'] as const;
 export type TailType = (typeof TAIL_TYPES)[number];
 
-export const PAYLOADS = ['ninguna', 'camara', 'misiles', 'carga'] as const;
+export const PAYLOADS = [
+  'ninguna',
+  'camara',
+  'misiles',
+  'carga',
+  'ametralladora',
+  'canon',
+  'carpa',
+  'cisterna',
+  'lanzacohetes',
+  'radar',
+  'contenedor',
+  'helipuerto',
+  'fusil',
+  'antitanque',
+  'mortero',
+] as const;
 export type Payload = (typeof PAYLOADS)[number];
 
 export interface Model3D {
   id: string;
   name: string;
   base: ModelBase;
-  /** Color del fuselaje. */
+  /** Variante del tipo (ver `BASE_DEFS[base].variants`); vacía si no tiene. */
+  variant: string;
+  /** Color principal: fuselaje, casco, carrocería o uniforme. */
   color: string;
-  /** Color de detalles: cabina, motores, rotores. */
+  /** Color de detalles: motores, rines, lona, chaleco y casco. */
   accent: string;
-  /** Longitud total, en metros. */
+  /** Largo, eslora o estatura, en metros. */
   length: number;
-  /** Envergadura (alas) o diámetro del rotor principal, en metros. */
+  /** Envergadura, diámetro del rotor, ancho, manga o separación entre soldados, en metros. */
   span: number;
-  /** Motores del avión (1 a 4) o rotores del multirrotor (4, 6 u 8). */
+  /** Cantidad según el tipo: motores, rotores, ejes, ruedas de rodaje o soldados. */
   engines: number;
-  /** Palas del rotor principal del helicóptero (2 a 6). */
+  /** Palas por hélice o rotor (aeronaves). */
   blades: number;
   tail: TailType;
+  /** Carga o armamento (las opciones dependen del tipo). */
   payload: Payload;
-  /** Alas altas (transporte) o bajas (ataque). */
+  /** Alas altas (transporte) o bajas (ataque). Solo aviones. */
   highWing: boolean;
   /** Matrícula o código pintado (solo informativo). */
   code: string;
+  /**
+   * Modelo propio (.glb / .gltf) que reemplaza a las piezas paramétricas. El archivo vive en el
+   * almacén de adjuntos con este id; las medidas del modelo lo escalan.
+   */
+  mesh?: CustomMesh;
+  /** Morfología de la figura (infantería): proporciones, piel, cabello y ropa. */
+  body?: ModelBody;
 }
 
-export const BASE_DEFS: Record<
-  ModelBase,
-  { name: string; engines: { min: number; max: number; step: number; label: string } }
-> = {
-  avion: { name: 'Avión', engines: { min: 1, max: 4, step: 1, label: 'Motores' } },
-  helicoptero: { name: 'Helicóptero', engines: { min: 1, max: 2, step: 1, label: 'Turbinas' } },
+/** Rasgos físicos de una figura humana; la estatura es `length`. */
+export interface ModelBody {
+  sexo: Sex | '';
+  /** Peso en kg (0 = medio). */
+  peso: number;
+  somatotipo: Somatotype | '';
+  piel: string;
+  cabello: string;
+  peinado: HairStyle;
+  barba: FacialHair;
+  /** Ropa civil en lugar de uniforme y equipo. */
+  civil: boolean;
+}
+
+/** Archivo 3D propio: un modelo hecho en Blender, descargado de una biblioteca, etc. */
+export interface CustomMesh {
+  /**
+   * Id del archivo en el almacén de adjuntos (IndexedDB), o ruta de un modelo incluido en la
+   * app (empieza por «/», p. ej. `/models/humanos/hombre.glb`).
+   */
+  id: string;
+  /** Nombre original del archivo. */
+  name: string;
+  /** Giro, en grados, para que el frente del archivo mire hacia la nariz o proa (+x). */
+  yaw: number;
+  /** Animación que se reproduce (vacía = la primera de caminar o reposo, si hay). */
+  anim: string;
+  /** Piezas que se suman al modelo, en su mismo sistema de coordenadas (cabello, barba…). */
+  parts?: string[];
+  /** Tono de piel medio de la textura del archivo, para teñirla al tono de cada persona. */
+  skinRef?: string;
+  /** Color medio de la textura del cabello, para teñirla. */
+  hairRef?: string;
+}
+
+/** El archivo es un modelo incluido en la app (no un adjunto del usuario). */
+export const isBuiltinMesh = (id: string): boolean => id.startsWith('/');
+
+/** Extensiones de modelo 3D que se pueden cargar. */
+export const MESH_ACCEPT = '.glb,.gltf,model/gltf-binary,model/gltf+json';
+
+/** Dominio del modelo: define dónde se apoya y cómo se agrupa en el taller. */
+export type ModelDomain = 'aire' | 'tierra' | 'mar' | 'personal';
+
+export const DOMAIN_NAMES: Record<ModelDomain, string> = {
+  aire: 'Aire',
+  tierra: 'Tierra',
+  mar: 'Mar y río',
+  personal: 'Infantería',
+};
+
+interface Range {
+  min: number;
+  max: number;
+  step: number;
+}
+
+export interface BaseDef {
+  name: string;
+  domain: ModelDomain;
+  /** Rótulos de las medidas. */
+  lengthLabel: string;
+  spanLabel: string;
+  length: Range;
+  span: Range;
+  /** Control de cantidad (`engines`); `null` si no aplica. */
+  count: (Range & { label: string }) | null;
+  /** Palas por hélice; solo aeronaves con hélices. */
+  blades: boolean;
+  tails: readonly TailType[] | null;
+  wings: boolean;
+  payloadLabel: string;
+  payloads: readonly Payload[];
+  variants: { label: string; options: Readonly<Record<string, string>> } | null;
+  /** Unidad (símbolo) con la que se coloca en el mapa. */
+  unit: UnitType;
+  /** Altura de vuelo típica sobre el terreno, en metros (0 en superficie). */
+  altitude: number;
+}
+
+const AIR_SMALL: Range = { min: 0.3, max: 8, step: 0.1 };
+const AIR_BIG: Range = { min: 3, max: 70, step: 0.5 };
+
+export const BASE_DEFS: Record<ModelBase, BaseDef> = {
+  avion: {
+    name: 'Avión de hélice',
+    domain: 'aire',
+    lengthLabel: 'Largo',
+    spanLabel: 'Envergadura',
+    length: AIR_BIG,
+    span: AIR_BIG,
+    count: { min: 1, max: 4, step: 1, label: 'Motores' },
+    blades: true,
+    tails: TAIL_TYPES,
+    wings: true,
+    payloadLabel: 'Carga',
+    payloads: ['ninguna', 'camara', 'misiles', 'carga'],
+    variants: null,
+    unit: 'aviacion-fija',
+    altitude: 600,
+  },
+  caza: {
+    name: 'Avión a reacción',
+    domain: 'aire',
+    lengthLabel: 'Largo',
+    spanLabel: 'Envergadura',
+    length: AIR_BIG,
+    span: AIR_BIG,
+    count: { min: 1, max: 2, step: 1, label: 'Turbinas' },
+    blades: false,
+    tails: ['convencional', 'en-v'],
+    wings: false,
+    payloadLabel: 'Armamento',
+    payloads: ['ninguna', 'misiles', 'carga'],
+    variants: null,
+    unit: 'aviacion-fija',
+    altitude: 1500,
+  },
+  helicoptero: {
+    name: 'Helicóptero',
+    domain: 'aire',
+    lengthLabel: 'Largo',
+    spanLabel: 'Diámetro del rotor',
+    length: AIR_BIG,
+    span: AIR_BIG,
+    count: { min: 1, max: 2, step: 1, label: 'Turbinas' },
+    blades: true,
+    tails: null,
+    wings: false,
+    payloadLabel: 'Carga',
+    payloads: ['ninguna', 'camara', 'misiles', 'carga'],
+    variants: { label: 'Tipo', options: { utilitario: 'Utilitario', ataque: 'De ataque' } },
+    unit: 'aviacion',
+    altitude: 150,
+  },
   'dron-multirrotor': {
     name: 'Dron multirrotor',
-    engines: { min: 4, max: 8, step: 2, label: 'Rotores' },
+    domain: 'aire',
+    lengthLabel: 'Largo',
+    spanLabel: 'Ancho',
+    length: AIR_SMALL,
+    span: AIR_SMALL,
+    count: { min: 4, max: 8, step: 2, label: 'Rotores' },
+    blades: true,
+    tails: null,
+    wings: false,
+    payloadLabel: 'Carga',
+    payloads: ['ninguna', 'camara', 'misiles', 'carga'],
+    variants: null,
+    unit: 'vigilancia',
+    altitude: 80,
   },
   'dron-ala-fija': {
     name: 'Dron de ala fija',
-    engines: { min: 1, max: 2, step: 1, label: 'Hélices' },
+    domain: 'aire',
+    lengthLabel: 'Largo',
+    spanLabel: 'Envergadura',
+    length: { min: 0.5, max: 20, step: 0.1 },
+    span: { min: 0.5, max: 30, step: 0.1 },
+    count: { min: 1, max: 2, step: 1, label: 'Hélices' },
+    blades: true,
+    tails: TAIL_TYPES,
+    wings: true,
+    payloadLabel: 'Carga',
+    payloads: ['ninguna', 'camara', 'misiles', 'carga'],
+    variants: null,
+    unit: 'vigilancia',
+    altitude: 300,
+  },
+  tanque: {
+    name: 'Carro de combate',
+    domain: 'tierra',
+    lengthLabel: 'Largo (con cañón)',
+    spanLabel: 'Ancho',
+    length: { min: 5, max: 13, step: 0.1 },
+    span: { min: 2.5, max: 4.2, step: 0.05 },
+    count: { min: 5, max: 7, step: 1, label: 'Ruedas de rodaje por lado' },
+    blades: false,
+    tails: null,
+    wings: false,
+    payloadLabel: 'Armamento adicional',
+    payloads: ['ninguna', 'ametralladora', 'misiles'],
+    variants: null,
+    unit: 'blindados',
+    altitude: 0,
+  },
+  blindado: {
+    name: 'Blindado de transporte',
+    domain: 'tierra',
+    lengthLabel: 'Largo',
+    spanLabel: 'Ancho',
+    length: { min: 4.5, max: 10, step: 0.1 },
+    span: { min: 2.2, max: 3.4, step: 0.05 },
+    count: { min: 2, max: 4, step: 1, label: 'Ejes (o rodillos − 2 en orugas)' },
+    blades: false,
+    tails: null,
+    wings: false,
+    payloadLabel: 'Armamento',
+    payloads: ['ninguna', 'ametralladora', 'canon', 'misiles'],
+    variants: { label: 'Tren', options: { ruedas: 'Ruedas', orugas: 'Orugas' } },
+    unit: 'mecanizada',
+    altitude: 0,
+  },
+  camion: {
+    name: 'Camión',
+    domain: 'tierra',
+    lengthLabel: 'Largo',
+    spanLabel: 'Ancho',
+    length: { min: 5, max: 14, step: 0.1 },
+    span: { min: 2, max: 2.8, step: 0.05 },
+    count: { min: 2, max: 4, step: 1, label: 'Ejes' },
+    blades: false,
+    tails: null,
+    wings: false,
+    payloadLabel: 'Carrocería',
+    payloads: ['carpa', 'carga', 'cisterna', 'lanzacohetes', 'radar', 'contenedor'],
+    variants: null,
+    unit: 'transportes',
+    altitude: 0,
+  },
+  camioneta: {
+    name: 'Camioneta',
+    domain: 'tierra',
+    lengthLabel: 'Largo',
+    spanLabel: 'Ancho',
+    length: { min: 4, max: 6.5, step: 0.05 },
+    span: { min: 1.6, max: 2.2, step: 0.05 },
+    count: null,
+    blades: false,
+    tails: null,
+    wings: false,
+    payloadLabel: 'En el platón',
+    payloads: ['ninguna', 'ametralladora', 'carga'],
+    variants: { label: 'Cabina', options: { doble: 'Doble cabina', sencilla: 'Sencilla' } },
+    unit: 'transportes',
+    altitude: 0,
+  },
+  'vehiculo-ligero': {
+    name: 'Vehículo táctico ligero',
+    domain: 'tierra',
+    lengthLabel: 'Largo',
+    spanLabel: 'Ancho',
+    length: { min: 3.5, max: 6.5, step: 0.05 },
+    span: { min: 1.6, max: 2.5, step: 0.05 },
+    count: null,
+    blades: false,
+    tails: null,
+    wings: false,
+    payloadLabel: 'Armamento',
+    payloads: ['ninguna', 'ametralladora', 'misiles'],
+    variants: { label: 'Carrocería', options: { cerrado: 'Cerrada', abierto: 'Abierta' } },
+    unit: 'reconocimiento',
+    altitude: 0,
+  },
+  artilleria: {
+    name: 'Artillería',
+    domain: 'tierra',
+    lengthLabel: 'Largo',
+    spanLabel: 'Ancho',
+    length: { min: 5, max: 14, step: 0.1 },
+    span: { min: 2, max: 3.6, step: 0.05 },
+    count: { min: 5, max: 7, step: 1, label: 'Ruedas de rodaje (autopropulsada)' },
+    blades: false,
+    tails: null,
+    wings: false,
+    payloadLabel: 'Armamento adicional',
+    payloads: ['ninguna', 'ametralladora'],
+    variants: {
+      label: 'Tipo',
+      options: { remolcada: 'Obús remolcado', autopropulsada: 'Obús autopropulsado' },
+    },
+    unit: 'artilleria',
+    altitude: 0,
+  },
+  lancha: {
+    name: 'Lancha',
+    domain: 'mar',
+    lengthLabel: 'Eslora',
+    spanLabel: 'Manga',
+    length: { min: 4, max: 30, step: 0.1 },
+    span: { min: 1.5, max: 7, step: 0.05 },
+    count: { min: 1, max: 3, step: 1, label: 'Motores fuera de borda' },
+    blades: false,
+    tails: null,
+    wings: false,
+    payloadLabel: 'Armamento',
+    payloads: ['ninguna', 'ametralladora'],
+    variants: {
+      label: 'Tipo',
+      options: { patrullera: 'Patrullera con cabina', rigida: 'Bote semirrígido' },
+    },
+    unit: 'naval',
+    altitude: 0,
+  },
+  buque: {
+    name: 'Buque',
+    domain: 'mar',
+    lengthLabel: 'Eslora',
+    spanLabel: 'Manga',
+    length: { min: 40, max: 200, step: 1 },
+    span: { min: 6, max: 32, step: 0.5 },
+    count: null,
+    blades: false,
+    tails: null,
+    wings: false,
+    payloadLabel: 'Armamento',
+    payloads: ['canon', 'misiles', 'helipuerto'],
+    variants: {
+      label: 'Tipo',
+      options: { combate: 'De combate (fragata)', desembarco: 'Anfibio de desembarco' },
+    },
+    unit: 'naval',
+    altitude: 0,
+  },
+  submarino: {
+    name: 'Submarino',
+    domain: 'mar',
+    lengthLabel: 'Eslora',
+    spanLabel: 'Diámetro',
+    length: { min: 20, max: 120, step: 1 },
+    span: { min: 3, max: 12, step: 0.1 },
+    count: null,
+    blades: false,
+    tails: null,
+    wings: false,
+    payloadLabel: 'Carga',
+    payloads: ['ninguna'],
+    variants: null,
+    unit: 'naval',
+    altitude: 0,
+  },
+  soldados: {
+    name: 'Infantería',
+    domain: 'personal',
+    lengthLabel: 'Estatura',
+    spanLabel: 'Separación',
+    length: { min: 1.5, max: 2, step: 0.01 },
+    span: { min: 1, max: 10, step: 0.5 },
+    count: { min: 1, max: 12, step: 1, label: 'Soldados' },
+    blades: false,
+    tails: null,
+    wings: false,
+    payloadLabel: 'Armamento (especial: 1 de cada 3)',
+    payloads: ['fusil', 'ametralladora', 'antitanque', 'mortero', 'ninguna'],
+    variants: {
+      label: 'Formación',
+      options: { cuna: 'Cuña', linea: 'Línea', columna: 'Columna', fila: 'Fila india' },
+    },
+    unit: 'infanteria',
+    altitude: 0,
   },
 };
 
 export const TAIL_NAMES: Record<TailType, string> = {
   convencional: 'Convencional',
   'en-t': 'En T',
-  'en-v': 'En V',
+  'en-v': 'En V (doble deriva)',
 };
 
 export const PAYLOAD_NAMES: Record<Payload, string> = {
   ninguna: 'Ninguna',
   camara: 'Cámara / sensor',
-  misiles: 'Armamento bajo las alas',
-  carga: 'Contenedor de carga',
+  misiles: 'Misiles',
+  carga: 'Carga',
+  ametralladora: 'Ametralladora',
+  canon: 'Cañón',
+  carpa: 'Carpa para tropas',
+  cisterna: 'Cisterna',
+  lanzacohetes: 'Lanzacohetes múltiple',
+  radar: 'Radar',
+  contenedor: 'Contenedor / taller',
+  helipuerto: 'Misiles y helipuerto',
+  fusil: 'Solo fusiles',
+  antitanque: 'Lanzador antitanque',
+  mortero: 'Mortero',
 };
 
-/** Modelos de partida genéricos (no reproducen ninguna aeronave concreta). */
-export const PRESETS: ReadonlyArray<Omit<Model3D, 'id'>> = [
-  {
+type Preset = Omit<Model3D, 'id'>;
+
+const P = (p: Partial<Preset> & Pick<Preset, 'name' | 'base' | 'length' | 'span'>): Preset => {
+  const def = BASE_DEFS[p.base];
+  return {
+    variant: def.variants ? Object.keys(def.variants.options)[0]! : '',
+    color: '#5d6b4a',
+    accent: '#2b3440',
+    engines: def.count?.min ?? 1,
+    blades: 2,
+    tail: 'convencional',
+    payload: def.payloads[0]!,
+    highWing: false,
+    code: '',
+    ...p,
+  };
+};
+
+/** Modelos de partida genéricos (no reproducen ningún equipo concreto). */
+export const PRESETS: readonly Preset[] = [
+  // Aire.
+  P({
     name: 'Avión de transporte',
     base: 'avion',
     color: '#8a949c',
-    accent: '#2b3440',
     length: 30,
     span: 33,
     engines: 4,
     blades: 4,
     tail: 'en-t',
-    payload: 'ninguna',
     highWing: true,
-    code: '',
-  },
-  {
+  }),
+  P({
     name: 'Avión de ataque ligero',
     base: 'avion',
-    color: '#5d6b4a',
-    accent: '#1c232b',
     length: 11,
     span: 11,
-    engines: 1,
     blades: 4,
-    tail: 'convencional',
     payload: 'misiles',
-    highWing: false,
-    code: '',
-  },
-  {
+    accent: '#1c232b',
+  }),
+  P({
+    name: 'Caza a reacción',
+    base: 'caza',
+    color: '#7d8791',
+    length: 16,
+    span: 10,
+    engines: 1,
+    payload: 'misiles',
+  }),
+  P({
+    name: 'Caza bimotor',
+    base: 'caza',
+    color: '#6f7a80',
+    length: 19,
+    span: 13,
+    engines: 2,
+    tail: 'en-v',
+    payload: 'misiles',
+  }),
+  P({
     name: 'Helicóptero utilitario',
     base: 'helicoptero',
     color: '#4f5d3f',
@@ -108,12 +548,20 @@ export const PRESETS: ReadonlyArray<Omit<Model3D, 'id'>> = [
     span: 16,
     engines: 2,
     blades: 4,
-    tail: 'convencional',
-    payload: 'ninguna',
-    highWing: false,
-    code: '',
-  },
-  {
+  }),
+  P({
+    name: 'Helicóptero de ataque',
+    base: 'helicoptero',
+    variant: 'ataque',
+    color: '#4b5340',
+    accent: '#1a1f24',
+    length: 17,
+    span: 14,
+    engines: 2,
+    blades: 4,
+    payload: 'misiles',
+  }),
+  P({
     name: 'Dron cuadricóptero',
     base: 'dron-multirrotor',
     color: '#30353b',
@@ -121,432 +569,284 @@ export const PRESETS: ReadonlyArray<Omit<Model3D, 'id'>> = [
     length: 1.2,
     span: 1.2,
     engines: 4,
-    blades: 2,
-    tail: 'convencional',
     payload: 'camara',
-    highWing: false,
-    code: '',
-  },
-  {
+  }),
+  P({
+    name: 'Dron hexacóptero de carga',
+    base: 'dron-multirrotor',
+    color: '#3a3f2e',
+    accent: '#c9c2a0',
+    length: 2.2,
+    span: 2.2,
+    engines: 6,
+    payload: 'carga',
+  }),
+  P({
     name: 'Dron de ala fija',
     base: 'dron-ala-fija',
     color: '#c9ced3',
     accent: '#3a4048',
     length: 4,
     span: 7,
-    engines: 1,
-    blades: 2,
     tail: 'en-v',
     payload: 'camara',
     highWing: true,
-    code: '',
-  },
+  }),
+  P({
+    name: 'Dron de altura media (armado)',
+    base: 'dron-ala-fija',
+    color: '#aab1b8',
+    accent: '#3a4048',
+    length: 11,
+    span: 20,
+    blades: 3,
+    tail: 'en-v',
+    payload: 'misiles',
+  }),
+  // Tierra.
+  P({
+    name: 'Carro de combate',
+    base: 'tanque',
+    color: '#5a6345',
+    accent: '#3a3f2e',
+    length: 9.5,
+    span: 3.6,
+    engines: 6,
+    payload: 'ametralladora',
+  }),
+  P({
+    name: 'Blindado 8×8',
+    base: 'blindado',
+    color: '#5d6b4a',
+    accent: '#3a3f2e',
+    length: 8,
+    span: 2.9,
+    engines: 4,
+    payload: 'canon',
+  }),
+  P({
+    name: 'Blindado 4×4',
+    base: 'blindado',
+    color: '#6b6e52',
+    accent: '#3a3f2e',
+    length: 6,
+    span: 2.5,
+    engines: 2,
+    payload: 'ametralladora',
+  }),
+  P({
+    name: 'Transporte de orugas',
+    base: 'blindado',
+    variant: 'orugas',
+    color: '#5d6b4a',
+    accent: '#3a3f2e',
+    length: 6.8,
+    span: 2.9,
+    engines: 3,
+    payload: 'ametralladora',
+  }),
+  P({
+    name: 'Camión de tropas',
+    base: 'camion',
+    color: '#55613f',
+    accent: '#6b6a4c',
+    length: 8,
+    span: 2.5,
+    engines: 3,
+    payload: 'carpa',
+  }),
+  P({
+    name: 'Camión cisterna',
+    base: 'camion',
+    color: '#55613f',
+    accent: '#7f8670',
+    length: 8.5,
+    span: 2.5,
+    engines: 3,
+    payload: 'cisterna',
+  }),
+  P({
+    name: 'Lanzacohetes múltiple',
+    base: 'camion',
+    color: '#5a6345',
+    accent: '#4a5238',
+    length: 9,
+    span: 2.5,
+    engines: 3,
+    payload: 'lanzacohetes',
+  }),
+  P({
+    name: 'Camión radar antiaéreo',
+    base: 'camion',
+    color: '#5a6345',
+    accent: '#6e7552',
+    length: 9,
+    span: 2.5,
+    engines: 3,
+    payload: 'radar',
+  }),
+  P({
+    name: 'Camioneta pick-up',
+    base: 'camioneta',
+    color: '#d9dcdf',
+    accent: '#8a8f96',
+    length: 5.3,
+    span: 1.9,
+  }),
+  P({
+    name: 'Camioneta artillada',
+    base: 'camioneta',
+    color: '#8a7a5c',
+    accent: '#3a3a36',
+    length: 5.3,
+    span: 1.9,
+    payload: 'ametralladora',
+  }),
+  P({
+    name: 'Vehículo táctico ligero',
+    base: 'vehiculo-ligero',
+    color: '#6b6e52',
+    accent: '#3a3f2e',
+    length: 4.9,
+    span: 2.2,
+    payload: 'ametralladora',
+  }),
+  P({
+    name: 'Obús remolcado',
+    base: 'artilleria',
+    color: '#5a6345',
+    accent: '#3a3f2e',
+    length: 9,
+    span: 2.6,
+  }),
+  P({
+    name: 'Obús autopropulsado',
+    base: 'artilleria',
+    variant: 'autopropulsada',
+    color: '#5a6345',
+    accent: '#3a3f2e',
+    length: 10,
+    span: 3.3,
+    engines: 6,
+    payload: 'ametralladora',
+  }),
+  // Mar y río.
+  P({
+    name: 'Lancha patrullera de río',
+    base: 'lancha',
+    color: '#4f5b4a',
+    accent: '#2a3038',
+    length: 12,
+    span: 3,
+    engines: 2,
+    payload: 'ametralladora',
+  }),
+  P({
+    name: 'Bote de asalto',
+    base: 'lancha',
+    variant: 'rigida',
+    color: '#30353b',
+    accent: '#4a5058',
+    length: 8,
+    span: 2.8,
+    engines: 2,
+  }),
+  P({
+    name: 'Fragata',
+    base: 'buque',
+    color: '#8c949b',
+    accent: '#7a2f2f',
+    length: 110,
+    span: 14,
+    payload: 'helipuerto',
+  }),
+  P({
+    name: 'Buque de desembarco',
+    base: 'buque',
+    variant: 'desembarco',
+    color: '#8c949b',
+    accent: '#7a2f2f',
+    length: 150,
+    span: 24,
+  }),
+  P({
+    name: 'Submarino',
+    base: 'submarino',
+    color: '#2b2f33',
+    accent: '#1d2024',
+    length: 60,
+    span: 6.5,
+  }),
+  // Infantería.
+  P({
+    name: 'Soldado',
+    base: 'soldados',
+    color: '#5b6146',
+    accent: '#3b3f2c',
+    length: 1.75,
+    span: 3,
+    engines: 1,
+  }),
+  P({
+    name: 'Escuadra de fusileros',
+    base: 'soldados',
+    color: '#5b6146',
+    accent: '#3b3f2c',
+    length: 1.75,
+    span: 4,
+    engines: 9,
+    payload: 'ametralladora',
+  }),
+  P({
+    name: 'Equipo antitanque',
+    base: 'soldados',
+    variant: 'linea',
+    color: '#5b6146',
+    accent: '#3b3f2c',
+    length: 1.75,
+    span: 3,
+    engines: 3,
+    payload: 'antitanque',
+  }),
+  P({
+    name: 'Patrulla en fila',
+    base: 'soldados',
+    variant: 'fila',
+    color: '#4d5a3c',
+    accent: '#2f3526',
+    length: 1.75,
+    span: 5,
+    engines: 6,
+  }),
 ];
 
-export function newModel(preset: Omit<Model3D, 'id'> = PRESETS[0]!): Model3D {
+export const domainOf = (base: ModelBase): ModelDomain => BASE_DEFS[base].domain;
+
+export function newModel(preset: Preset = PRESETS[0]!): Model3D {
   return { ...preset, id: 'md' + uid() };
 }
 
 /** Corrige valores fuera de rango (p. ej. al importar un JSON editado a mano). */
 export function normalizeModel(m: Model3D): Model3D {
-  const e = BASE_DEFS[m.base].engines;
-  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-  let engines = clamp(Math.round(m.engines), e.min, e.max);
-  if (e.step === 2) engines -= (engines - e.min) % 2;
+  const def = BASE_DEFS[m.base] ?? BASE_DEFS.avion;
+  const clamp = (v: number, lo: number, hi: number) =>
+    Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : lo));
+  let engines = def.count ? clamp(Math.round(m.engines), def.count.min, def.count.max) : 1;
+  if (def.count?.step === 2) engines -= (engines - def.count.min) % 2;
+  const variants = def.variants ? Object.keys(def.variants.options) : [];
   return {
     ...m,
-    length: clamp(m.length, 0.2, 80),
-    span: clamp(m.span, 0.2, 80),
+    variant: variants.length ? (variants.includes(m.variant) ? m.variant : variants[0]!) : '',
+    length: clamp(m.length, 0.2, 250),
+    span: clamp(m.span, 0.2, 100),
     engines,
     blades: clamp(Math.round(m.blades), 2, 6),
+    tail: def.tails && !def.tails.includes(m.tail) ? def.tails[0]! : m.tail,
+    payload: def.payloads.includes(m.payload) ? m.payload : def.payloads[0]!,
   };
 }
 
-// ---------------------------------------------------------------- piezas
-
-export type Vec3 = [number, number, number];
-
-interface PartBase {
-  pos: Vec3;
-  /** Giro en radianes (orden XYZ). */
-  rot?: Vec3;
-  color: string;
-  opacity?: number;
-}
-
-/**
- * Piezas geométricas:
- * - `box`: caja de medidas `size`.
- * - `cyl`: cilindro (o cono si `r2` es 0) de largo `len` a lo largo de `axis`.
- * - `ellipsoid`: esfera escalada a los diámetros `size`.
- * - `rotor`: disco translúcido con `blades` palas que gira sobre `axis`.
- */
-export type Part =
-  | (PartBase & { shape: 'box'; size: Vec3 })
-  | (PartBase & { shape: 'cyl'; r: number; r2?: number; len: number; axis: 'x' | 'y' | 'z' })
-  | (PartBase & { shape: 'ellipsoid'; size: Vec3 })
-  | (PartBase & { shape: 'rotor'; r: number; blades: number; axis: 'x' | 'y' | 'z' });
-
-const GLASS = '#1d2a36';
-const PROP = '#20252b';
-
-function planeParts(m: Model3D, drone: boolean): Part[] {
-  const L = m.length;
-  const S = m.span;
-  const r = L * (drone ? 0.045 : 0.06);
-  const parts: Part[] = [];
-  // Fuselaje, nariz y cono de cola.
-  parts.push({ shape: 'cyl', r, len: L * 0.7, axis: 'x', pos: [0.02 * L, 0, 0], color: m.color });
-  parts.push({
-    shape: 'cyl',
-    r,
-    r2: r * 0.25,
-    len: L * 0.16,
-    axis: 'x',
-    pos: [0.45 * L, 0, 0],
-    color: m.color,
-  });
-  parts.push({
-    shape: 'cyl',
-    r,
-    r2: r * 0.3,
-    len: L * 0.14,
-    axis: 'x',
-    pos: [-0.4 * L, r * 0.15, 0],
-    rot: [0, 0, Math.PI],
-    color: m.color,
-  });
-  if (!drone)
-    parts.push({
-      shape: 'ellipsoid',
-      size: [L * 0.14, r * 1.1, r * 1.3],
-      pos: [0.33 * L, r * 0.65, 0],
-      color: m.accent === m.color ? GLASS : m.accent,
-    });
-
-  // Alas.
-  const chord = Math.max(L * 0.14, S * 0.07);
-  const thick = Math.max(r * 0.22, 0.02);
-  const wingY = m.highWing ? r * 0.85 : -r * 0.45;
-  parts.push({ shape: 'box', size: [chord, thick, S], pos: [0.04 * L, wingY, 0], color: m.color });
-
-  // Empenaje.
-  const tx = -0.43 * L;
-  const finH = L * 0.16;
-  if (m.tail === 'en-v') {
-    for (const s of [1, -1])
-      parts.push({
-        shape: 'box',
-        size: [L * 0.11, finH, thick],
-        pos: [tx, r + finH * 0.35, s * finH * 0.32],
-        rot: [s * 0.75, 0, 0],
-        color: m.color,
-      });
-  } else {
-    parts.push({
-      shape: 'box',
-      size: [L * 0.13, finH, thick],
-      pos: [tx, r + finH / 2 - r * 0.2, 0],
-      color: m.color,
-    });
-    parts.push({
-      shape: 'box',
-      size: [L * 0.1, thick, S * 0.34],
-      pos: [tx - L * 0.01, m.tail === 'en-t' ? r + finH - r * 0.2 : r * 0.2, 0],
-      color: m.color,
-    });
-  }
-
-  // Motores y hélices.
-  const n = m.engines;
-  const propR = drone ? S * 0.07 : Math.max(L * 0.08, S * 0.06);
-  if (drone) {
-    // Hélice propulsora detrás (o dos en el ala si son dos).
-    if (n === 1)
-      parts.push({
-        shape: 'rotor',
-        r: propR,
-        blades: m.blades,
-        axis: 'x',
-        pos: [-0.48 * L, 0, 0],
-        color: PROP,
-      });
-    else
-      for (const s of [1, -1]) {
-        parts.push({
-          shape: 'cyl',
-          r: r * 0.6,
-          len: L * 0.18,
-          axis: 'x',
-          pos: [0.04 * L, wingY, s * S * 0.22],
-          color: m.accent,
-        });
-        parts.push({
-          shape: 'rotor',
-          r: propR,
-          blades: m.blades,
-          axis: 'x',
-          pos: [-0.06 * L, wingY, s * S * 0.22],
-          color: PROP,
-        });
-      }
-  } else if (n === 1) {
-    parts.push({
-      shape: 'rotor',
-      r: propR,
-      blades: m.blades,
-      axis: 'x',
-      pos: [0.54 * L, 0, 0],
-      color: PROP,
-    });
-  } else {
-    const zs = n === 2 ? [0.22] : n === 3 ? [0, 0.3] : [0.18, 0.36];
-    const offsets = zs.flatMap((z) => (z === 0 ? [0] : [z, -z]));
-    for (const z of offsets) {
-      const onNose = z === 0;
-      const ex = onNose ? 0.54 * L : 0.04 * L + chord * 0.9;
-      if (!onNose)
-        parts.push({
-          shape: 'cyl',
-          r: r * 0.45,
-          len: chord * 1.2,
-          axis: 'x',
-          pos: [0.04 * L + chord * 0.25, wingY - r * 0.3, z * S],
-          color: m.accent,
-        });
-      parts.push({
-        shape: 'rotor',
-        r: onNose ? propR : propR * 0.9,
-        blades: m.blades,
-        axis: 'x',
-        pos: [ex, onNose ? 0 : wingY - r * 0.3, z * S],
-        color: PROP,
-      });
-    }
-  }
-
-  // Carga.
-  if (m.payload === 'camara')
-    parts.push({
-      shape: 'ellipsoid',
-      size: [r * 1.4, r * 1.4, r * 1.4],
-      pos: [0.3 * L, -r * 1.05, 0],
-      color: m.accent,
-    });
-  if (m.payload === 'misiles')
-    for (const s of [1, -1])
-      for (const z of [0.28, 0.4])
-        parts.push({
-          shape: 'cyl',
-          r: Math.max(r * 0.18, 0.03),
-          len: chord * 1.3,
-          axis: 'x',
-          pos: [0.05 * L, wingY - thick - r * 0.25, s * z * S],
-          color: '#d9d9d9',
-        });
-  if (m.payload === 'carga')
-    parts.push({
-      shape: 'box',
-      size: [L * 0.22, r * 0.9, r * 1.2],
-      pos: [0, -r * 1.1, 0],
-      color: m.accent,
-    });
-  return parts;
-}
-
-function helicopterParts(m: Model3D): Part[] {
-  const L = m.length;
-  const R = m.span / 2;
-  const parts: Part[] = [
-    // Cabina y fuselaje.
-    {
-      shape: 'ellipsoid',
-      size: [L * 0.42, L * 0.2, L * 0.17],
-      pos: [0.12 * L, 0, 0],
-      color: m.color,
-    },
-    {
-      shape: 'ellipsoid',
-      size: [L * 0.14, L * 0.11, L * 0.15],
-      pos: [0.3 * L, L * 0.02, 0],
-      color: GLASS,
-    },
-    // Botalón de cola, deriva y rotor de cola.
-    {
-      shape: 'cyl',
-      r: L * 0.035,
-      r2: L * 0.02,
-      len: L * 0.55,
-      axis: 'x',
-      pos: [-0.3 * L, L * 0.04, 0],
-      rot: [0, 0, Math.PI],
-      color: m.color,
-    },
-    {
-      shape: 'box',
-      size: [L * 0.07, L * 0.13, L * 0.012],
-      pos: [-0.56 * L, L * 0.1, 0],
-      color: m.color,
-    },
-    {
-      shape: 'box',
-      size: [L * 0.05, L * 0.01, L * 0.12],
-      pos: [-0.5 * L, L * 0.05, 0],
-      color: m.color,
-    },
-    {
-      shape: 'rotor',
-      r: Math.max(R * 0.18, L * 0.07),
-      blades: 2,
-      axis: 'z',
-      pos: [-0.57 * L, L * 0.12, L * 0.03],
-      color: PROP,
-    },
-    // Mástil y rotor principal.
-    {
-      shape: 'cyl',
-      r: L * 0.015,
-      len: L * 0.07,
-      axis: 'y',
-      pos: [0.1 * L, L * 0.13, 0],
-      color: m.accent,
-    },
-    {
-      shape: 'rotor',
-      r: R,
-      blades: m.blades,
-      axis: 'y',
-      pos: [0.1 * L, L * 0.17, 0],
-      color: PROP,
-    },
-  ];
-  // Turbinas sobre el fuselaje.
-  for (let i = 0; i < m.engines; i++)
-    parts.push({
-      shape: 'cyl',
-      r: L * 0.03,
-      len: L * 0.16,
-      axis: 'x',
-      pos: [0.04 * L, L * 0.1, m.engines === 1 ? 0 : (i ? -1 : 1) * L * 0.04],
-      color: m.accent,
-    });
-  // Patines.
-  for (const s of [1, -1]) {
-    parts.push({
-      shape: 'box',
-      size: [L * 0.42, L * 0.012, L * 0.02],
-      pos: [0.1 * L, -L * 0.13, s * L * 0.08],
-      color: m.accent,
-    });
-    for (const x of [0, 0.2])
-      parts.push({
-        shape: 'box',
-        size: [L * 0.012, L * 0.06, L * 0.012],
-        pos: [x * L, -L * 0.1, s * L * 0.075],
-        color: m.accent,
-      });
-  }
-  if (m.payload === 'camara')
-    parts.push({
-      shape: 'ellipsoid',
-      size: [L * 0.05, L * 0.05, L * 0.05],
-      pos: [0.33 * L, -L * 0.08, 0],
-      color: m.accent,
-    });
-  if (m.payload === 'misiles')
-    for (const s of [1, -1]) {
-      parts.push({
-        shape: 'box',
-        size: [L * 0.06, L * 0.01, L * 0.14],
-        pos: [0.08 * L, -L * 0.02, s * L * 0.13],
-        color: m.color,
-      });
-      parts.push({
-        shape: 'cyl',
-        r: L * 0.022,
-        len: L * 0.16,
-        axis: 'x',
-        pos: [0.1 * L, -L * 0.04, s * L * 0.19],
-        color: '#9aa0a6',
-      });
-    }
-  if (m.payload === 'carga')
-    parts.push({
-      shape: 'box',
-      size: [L * 0.12, L * 0.08, L * 0.1],
-      pos: [0.1 * L, -L * 0.24, 0],
-      color: m.accent,
-    });
-  return parts;
-}
-
-function multirotorParts(m: Model3D): Part[] {
-  const L = m.length;
-  const n = m.engines;
-  const armLen = L * 0.48;
-  const propR = Math.min(L * 0.19, (Math.PI * armLen) / n) * 0.95;
-  const parts: Part[] = [
-    { shape: 'box', size: [L * 0.28, L * 0.1, L * 0.22], pos: [0, 0, 0], color: m.color },
-    {
-      shape: 'ellipsoid',
-      size: [L * 0.14, L * 0.06, L * 0.12],
-      pos: [0.08 * L, L * 0.06, 0],
-      color: m.accent,
-    },
-  ];
-  for (let i = 0; i < n; i++) {
-    const a = (2 * Math.PI * i) / n + Math.PI / n;
-    const cx = Math.cos(a);
-    const cz = Math.sin(a);
-    parts.push({
-      shape: 'box',
-      size: [armLen, L * 0.035, L * 0.035],
-      pos: [(cx * armLen) / 2, 0, (cz * armLen) / 2],
-      rot: [0, -a, 0],
-      color: m.color,
-    });
-    parts.push({
-      shape: 'cyl',
-      r: L * 0.035,
-      len: L * 0.07,
-      axis: 'y',
-      pos: [cx * armLen, L * 0.035, cz * armLen],
-      color: m.accent,
-    });
-    parts.push({
-      shape: 'rotor',
-      r: propR,
-      blades: m.blades,
-      axis: 'y',
-      pos: [cx * armLen, L * 0.08, cz * armLen],
-      color: PROP,
-    });
-  }
-  for (const s of [1, -1])
-    parts.push({
-      shape: 'box',
-      size: [L * 0.3, L * 0.012, L * 0.02],
-      pos: [0, -L * 0.12, s * L * 0.1],
-      color: m.accent,
-    });
-  if (m.payload === 'camara')
-    parts.push({
-      shape: 'ellipsoid',
-      size: [L * 0.09, L * 0.09, L * 0.09],
-      pos: [0.06 * L, -L * 0.09, 0],
-      color: m.accent,
-    });
-  if (m.payload === 'carga' || m.payload === 'misiles')
-    parts.push({
-      shape: 'box',
-      size: [L * 0.16, L * 0.08, L * 0.12],
-      pos: [0, -L * 0.1, 0],
-      color: m.payload === 'misiles' ? '#9aa0a6' : m.accent,
-    });
-  return parts;
-}
-
-/** Piezas del modelo, en metros, centradas en el origen. */
+/** Piezas del modelo, en metros. */
 export function modelParts(m: Model3D): Part[] {
   const n = normalizeModel(m);
   switch (n.base) {
@@ -554,31 +854,52 @@ export function modelParts(m: Model3D): Part[] {
       return planeParts(n, false);
     case 'dron-ala-fija':
       return planeParts(n, true);
+    case 'caza':
+      return jetParts(n);
     case 'helicoptero':
       return helicopterParts(n);
     case 'dron-multirrotor':
       return multirotorParts(n);
+    case 'tanque':
+      return tankParts(n);
+    case 'blindado':
+      return apcParts(n);
+    case 'camion':
+      return truckParts(n);
+    case 'camioneta':
+      return pickupParts(n);
+    case 'vehiculo-ligero':
+      return lightVehicleParts(n);
+    case 'artilleria':
+      return artilleryParts(n);
+    case 'lancha':
+      return boatParts(n);
+    case 'buque':
+      return shipParts(n);
+    case 'submarino':
+      return submarineParts(n);
+    case 'soldados':
+      return infantryParts(n);
   }
 }
 
-/** Mayor dimensión del modelo (para encuadrar la cámara o escalarlo en el mapa). */
-export const modelSize = (m: Model3D): number => Math.max(m.length, m.span);
+const sizeCache = new WeakMap<Model3D, number>();
 
-/** Altura de vuelo típica sobre el terreno, en metros, según el tipo. */
-export const DEFAULT_ALTITUDE: Record<ModelBase, number> = {
-  avion: 600,
-  helicoptero: 150,
-  'dron-multirrotor': 80,
-  'dron-ala-fija': 300,
-};
+/** Mayor dimensión horizontal del modelo (para encuadrar la cámara o escalarlo en el mapa). */
+export function modelSize(m: Model3D): number {
+  let s = sizeCache.get(m);
+  if (s == null) {
+    const b = partsBounds(modelParts(m));
+    s = Math.max(b.max[0] - b.min[0], b.max[2] - b.min[2], b.max[1] - b.min[1], 0.1);
+    sizeCache.set(m, s);
+  }
+  return s;
+}
 
-/** Unidades a las que conviene ofrecer un modelo 3D. */
-export const AIR_UNIT_TYPES = [
-  'aviacion',
-  'aviacion-fija',
-  'vigilancia',
-  'reconocimiento',
-] as const;
+/** Altura de vuelo típica sobre el terreno, en metros, según el tipo (0 en superficie). */
+export const DEFAULT_ALTITUDE = Object.fromEntries(
+  MODEL_BASES.map((b) => [b, BASE_DEFS[b].altitude]),
+) as Record<ModelBase, number>;
 
 /**
  * Rumbo (radianes, 0 = norte, sentido horario) entre dos posiciones [lat, lng], o `null` si

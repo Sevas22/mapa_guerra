@@ -1,152 +1,147 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { plainName, UNITS } from '@/domain/catalog';
 import {
   BASE_DEFS,
   DEFAULT_ALTITUDE,
+  DOMAIN_NAMES,
+  MESH_ACCEPT,
   MODEL_BASES,
-  PAYLOADS,
   PAYLOAD_NAMES,
   PRESETS,
   TAIL_NAMES,
-  TAIL_TYPES,
-  modelSize,
+  domainOf,
   newModel,
   normalizeModel,
   type Model3D,
   type ModelBase,
+  type ModelDomain,
   type Payload,
   type TailType,
 } from '@/domain/models3d';
-import { buildModel, disposeModel, spinRotors } from '@/lib/model3dThree';
+import { addMeshFile } from '@/lib/mediaStore';
+import { NO_ANIM, meshClipNames } from '@/lib/model3dThree';
 import { selectSelected, useEditorStore } from '@/store/editorStore';
 import { useWorkspace } from '@/store/workspaceStore';
+import { ModelViewer } from './ModelViewer';
 
 const EMPTY: Model3D[] = [];
 
-/** Visor three.js con cámara orbital, suelo y sombras. */
-function Viewer({ model, spin }: { model: Model3D; spin: boolean }) {
-  const box = useRef<HTMLDivElement>(null);
-  const ctx = useRef<{
-    scene: THREE.Scene;
-    camera: THREE.PerspectiveCamera;
-    controls: OrbitControls;
-    group: THREE.Group | null;
-    spin: boolean;
-  } | null>(null);
-  const lastBase = useRef<string>('');
+/**
+ * Modelo realista propio: un .glb hecho en Blender o descargado de una biblioteca. Reemplaza a
+ * las piezas paramétricas y conserva las medidas, la formación y la colocación en el mapa.
+ */
+function MeshSection({ model, set }: { model: Model3D; set: (patch: Partial<Model3D>) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [clips, setClips] = useState<{ id: string; names: string[] } | null>(null);
+  const mesh = model.mesh;
 
   useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    el.appendChild(renderer.domElement);
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#0d131b');
-    scene.fog = new THREE.Fog('#0d131b', 60, 240);
-    const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 2000);
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.maxPolarAngle = Math.PI * 0.49;
-    scene.add(new THREE.HemisphereLight('#dfe8f2', '#2a3020', 1.4));
-    const sun = new THREE.DirectionalLight('#fff6e6', 2.2);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    scene.add(sun);
-    const ground = new THREE.Mesh(
-      new THREE.CircleGeometry(1, 64),
-      new THREE.MeshStandardMaterial({ color: '#1a2330', roughness: 1 }),
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    scene.add(ground);
-    const grid = new THREE.GridHelper(2, 20, '#3b4b61', '#253244');
-    scene.add(grid);
-    ctx.current = { scene, camera, controls, group: null, spin: true };
-    scene.userData = { sun, ground, grid };
-
-    const resize = () => {
-      const w = el.clientWidth;
-      const h = el.clientHeight;
-      renderer.setSize(w, h);
-      camera.aspect = w / Math.max(1, h);
-      camera.updateProjectionMatrix();
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(el);
-    const timer = new THREE.Timer();
-    let raf = 0;
-    const loop = () => {
-      raf = requestAnimationFrame(loop);
-      const c = ctx.current;
-      timer.update();
-      if (c?.group && c.spin) spinRotors(c.group, timer.getElapsed());
-      controls.update();
-      renderer.render(scene, camera);
-    };
-    loop();
+    if (!mesh) return;
+    let live = true;
+    void meshClipNames(mesh.id).then((names) => {
+      if (live) setClips({ id: mesh.id, names });
+    });
     return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      controls.dispose();
-      if (ctx.current?.group) disposeModel(ctx.current.group);
-      renderer.dispose();
-      renderer.domElement.remove();
-      ctx.current = null;
+      live = false;
     };
-  }, []);
+  }, [mesh]);
+  const names = mesh && clips?.id === mesh.id ? clips.names : [];
 
-  // Reconstruir el modelo con cada cambio; encuadrar al cambiar de modelo o de tipo.
-  useEffect(() => {
-    const c = ctx.current;
-    if (!c) return;
-    if (c.group) {
-      c.scene.remove(c.group);
-      disposeModel(c.group);
-    }
-    const g = buildModel(model);
-    const size = modelSize(model);
-    const lift = model.base === 'helicoptero' || model.base === 'dron-multirrotor' ? 0.16 : 0.12;
-    g.position.y = size * lift + (model.base === 'avion' ? model.length * 0.06 : 0);
-    c.scene.add(g);
-    c.group = g;
-    const { sun, ground, grid } = c.scene.userData as {
-      sun: THREE.DirectionalLight;
-      ground: THREE.Mesh;
-      grid: THREE.GridHelper;
-    };
-    ground.scale.setScalar(size * 2);
-    grid.scale.setScalar(size * 1.6);
-    sun.position.set(size * 1.2, size * 2, size * 0.8);
-    const cam = sun.shadow.camera;
-    cam.left = cam.bottom = -size;
-    cam.right = cam.top = size;
-    cam.far = size * 6;
-    cam.updateProjectionMatrix();
-    c.scene.fog = new THREE.Fog('#0d131b', size * 3, size * 9);
-    const key = `${model.id}|${model.base}`;
-    if (lastBase.current !== key) {
-      lastBase.current = key;
-      c.camera.position.set(size * 1.25, size * 0.8, size * 1.45);
-      c.controls.target.set(0, g.position.y, 0);
-      c.camera.near = size / 200;
-      c.camera.far = size * 40;
-      c.camera.updateProjectionMatrix();
-    }
-  }, [model]);
+  const load = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    setError('');
+    const r = await addMeshFile(file);
+    setBusy(false);
+    if ('error' in r) return setError(r.error);
+    // Los .glb miran hacia +z por convención; el taller usa +x como frente.
+    set({ mesh: { id: r.id, name: file.name, yaw: 90, anim: '' } });
+  };
 
-  useEffect(() => {
-    if (ctx.current) ctx.current.spin = spin;
-  }, [spin]);
-
-  return <div ref={box} className="absolute inset-0" aria-label="Vista previa 3D del modelo" />;
+  return (
+    <section className="sec">
+      <h3 className="sec-h">Modelo realista (.glb)</h3>
+      {mesh ? (
+        <>
+          <p className="mb-2 truncate text-[13px]" title={mesh.name}>
+            {mesh.name}
+          </p>
+          <div className="row">
+            <label className="field">
+              Frente
+              <select
+                value={String(mesh.yaw)}
+                onChange={(e) => set({ mesh: { ...mesh, yaw: Number(e.target.value) } })}
+              >
+                <option value="0">0°</option>
+                <option value="90">90°</option>
+                <option value="180">180°</option>
+                <option value="270">270°</option>
+              </select>
+            </label>
+            <label className="field">
+              Animación
+              <select
+                value={mesh.anim}
+                onChange={(e) => set({ mesh: { ...mesh, anim: e.target.value } })}
+              >
+                <option value="">{names.length ? 'Automática' : 'Sin animaciones'}</option>
+                {names.length ? <option value={NO_ANIM}>Ninguna (quieto)</option> : null}
+                {names.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="note mb-2">
+            Se escala {model.base === 'soldados' ? 'a la estatura' : 'al largo'} indicado en
+            Medidas. Si no mira hacia adelante, cambia «Frente».
+          </p>
+          <div className="row">
+            <button type="button" className="btn" onClick={() => input.current?.click()}>
+              Cambiar archivo
+            </button>
+            <button type="button" className="btn" onClick={() => set({ mesh: undefined })}>
+              Usar el paramétrico
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="note mb-2">
+            Para un acabado de videojuego carga un modelo con texturas (y animaciones de caminar o
+            reposo, si las trae) en formato .glb: hecho en Blender o descargado de una biblioteca
+            con licencia libre. Mantiene medidas, formación y colocación en el mapa.
+          </p>
+          <button
+            type="button"
+            className="btn w-full"
+            disabled={busy}
+            onClick={() => input.current?.click()}
+          >
+            {busy ? 'Cargando…' : 'Cargar modelo .glb…'}
+          </button>
+        </>
+      )}
+      {error ? <p className="mt-1.5 text-[12px] text-danger">{error}</p> : null}
+      <input
+        ref={input}
+        type="file"
+        accept={MESH_ACCEPT}
+        className="hidden"
+        onChange={(e) => {
+          void load(e.target.files?.[0]);
+          e.target.value = '';
+        }}
+      />
+    </section>
+  );
 }
 
 function Num({
@@ -187,7 +182,45 @@ function Num({
   );
 }
 
-/** Taller 3D: crear y modelar aviones, helicópteros y drones, y asignarlos a unidades. */
+const DOMAINS = Object.keys(DOMAIN_NAMES) as ModelDomain[];
+const dec = (v: number) => String(Math.round(v * 100) / 100).replace('.', ',');
+
+const SWATCHES: Record<ModelDomain, [string, string][]> = {
+  aire: [
+    ['Gris', '#8a949c'],
+    ['Verde oliva', '#5d6b4a'],
+    ['Camuflaje', '#4f5d3f'],
+    ['Arena', '#b39d76'],
+    ['Blanco', '#e3e6ea'],
+    ['Negro', '#30353b'],
+  ],
+  tierra: [
+    ['Verde oliva', '#5d6b4a'],
+    ['Verde OTAN', '#4b5a3a'],
+    ['Arena', '#b39d76'],
+    ['Pardo', '#7a6a4a'],
+    ['Blanco', '#d9dcdf'],
+    ['Gris', '#6f767c'],
+  ],
+  mar: [
+    ['Gris naval', '#8c949b'],
+    ['Gris oscuro', '#5a636b'],
+    ['Verde río', '#4f5b4a'],
+    ['Negro', '#2b2f33'],
+    ['Blanco', '#e3e6ea'],
+    ['Azul', '#2e4a66'],
+  ],
+  personal: [
+    ['Camuflaje selva', '#5b6146'],
+    ['Verde', '#4d5a3c'],
+    ['Arena', '#a8956c'],
+    ['Pardo', '#6b5a43'],
+    ['Negro', '#2b2e30'],
+    ['Civil', '#5d6f86'],
+  ],
+};
+
+/** Taller 3D: modelar aeronaves, vehículos, embarcaciones e infantería y llevarlos al mapa. */
 export default function ModelWorkshop() {
   const models = useEditorStore((s) => s.scenario.models ?? EMPTY);
   const objects = useEditorStore((s) => s.scenario.objects);
@@ -195,14 +228,16 @@ export default function ModelWorkshop() {
   const upsert = useEditorStore((s) => s.upsertItem);
   const removeItem = useEditorStore((s) => s.removeItem);
   const updateObject = useEditorStore((s) => s.updateObject);
+  const setTool = useEditorStore((s) => s.setTool);
   const focusId = useWorkspace((s) => s.focusId);
   const close = useWorkspace((s) => s.close);
   const [currentId, setCurrentId] = useState<string | null>(focusId ?? models[0]?.id ?? null);
   const [spin, setSpin] = useState(true);
   const model = models.find((m) => m.id === currentId) ?? models[0];
+  const [tab, setTab] = useState<ModelDomain>(model ? domainOf(model.base) : 'aire');
 
-  const create = (i: number) => {
-    const m = newModel(PRESETS[i]);
+  const create = (p: (typeof PRESETS)[number]) => {
+    const m = newModel(p);
     upsert('models', m);
     setCurrentId(m.id);
   };
@@ -216,45 +251,62 @@ export default function ModelWorkshop() {
   };
   const changeBase = (base: ModelBase) => {
     const preset = PRESETS.find((p) => p.base === base) ?? PRESETS[0]!;
-    set({
-      base,
-      length: preset.length,
-      span: preset.span,
-      engines: preset.engines,
-      blades: preset.blades,
-      tail: preset.tail,
-      highWing: preset.highWing,
+    // Se toma la receta del primer modelo de partida de ese tipo, conservando nombre y código.
+    set({ ...preset, base, name: model?.name ?? preset.name, code: model?.code ?? '' });
+  };
+  const place = () => {
+    if (!model) return;
+    const def = BASE_DEFS[model.base];
+    setTool({
+      mode: 'place',
+      kind: 'unit',
+      type: def.unit,
+      extra: { model3d: model.id, altitude: def.altitude, label: model.name },
     });
+    close();
   };
 
   const users = model ? objects.filter((o) => o.kind === 'unit' && o.model3d === model.id) : [];
   const selUnit = selected?.kind === 'unit' ? selected : undefined;
-  const eng = model ? BASE_DEFS[model.base].engines : null;
-  const isPlane = model?.base === 'avion' || model?.base === 'dron-ala-fija';
-  const big = model ? Math.max(model.length, model.span) > 6 : true;
+  const def = model ? BASE_DEFS[model.base] : null;
+  const domain = model ? domainOf(model.base) : 'aire';
 
   return (
     <>
       <div className="ws-h">
         <h2>
-          Taller 3D <span className="text-accent">·</span> aeronaves y drones
+          Taller 3D <span className="text-accent">·</span> equipos y tropas
         </h2>
         <span className="flex-1" />
         <button type="button" className="btn primary" onClick={close}>
           Volver al mapa
         </button>
       </div>
-      <div className="ws-body grid-cols-[230px_1fr_300px] max-[900px]:grid-cols-1">
+      <div className="ws-body grid-cols-[250px_1fr_300px] max-[900px]:grid-cols-1">
         <aside className="ws-side border-r border-line">
           <section className="sec">
             <h3 className="sec-h">Nuevo modelo</h3>
-            <div className="grid gap-1.5">
-              {PRESETS.map((p, i) => (
+            <div className="mb-2 grid grid-cols-4 gap-1" role="tablist">
+              {DOMAINS.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === d}
+                  className="rounded border border-line px-1 py-1 text-[11px] text-muted aria-selected:border-accent aria-selected:text-accent"
+                  onClick={() => setTab(d)}
+                >
+                  {DOMAIN_NAMES[d]}
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-1">
+              {PRESETS.filter((p) => domainOf(p.base) === tab).map((p) => (
                 <button
                   key={p.name}
                   type="button"
-                  className="btn justify-start!"
-                  onClick={() => create(i)}
+                  className="btn justify-start! text-left text-[13px]!"
+                  onClick={() => create(p)}
                 >
                   + {p.name}
                 </button>
@@ -275,7 +327,7 @@ export default function ModelWorkshop() {
                   >
                     <div className="truncate">{m.name}</div>
                     <div className="text-[11px] text-muted">
-                      {BASE_DEFS[m.base].name} · {String(m.length).replace('.', ',')} m
+                      {BASE_DEFS[m.base].name} · {dec(m.length)} m
                     </div>
                   </button>
                 ))}
@@ -287,9 +339,9 @@ export default function ModelWorkshop() {
         </aside>
 
         <main className="relative min-h-[320px]">
-          {model ? (
+          {model && def ? (
             <>
-              <Viewer model={model} spin={spin} />
+              <ModelViewer model={model} spin={spin} />
               <div className="pointer-events-none absolute top-3 left-3 rounded bg-[rgba(16,22,31,.85)] px-3 py-2">
                 <div className="font-display text-lg font-bold tracking-wider uppercase">
                   {model.name}
@@ -298,14 +350,18 @@ export default function ModelWorkshop() {
                   ) : null}
                 </div>
                 <div className="text-xs text-muted">
-                  {BASE_DEFS[model.base].name} · largo {String(model.length).replace('.', ',')} m ·{' '}
-                  {model.base === 'helicoptero' ? 'rotor' : 'envergadura'}{' '}
-                  {String(model.span).replace('.', ',')} m
+                  {def.name}
+                  {def.variants
+                    ? ` (${def.variants.options[model.variant]?.toLowerCase() ?? ''})`
+                    : ''}{' '}
+                  · {def.lengthLabel.toLowerCase()} {dec(model.length)} m ·{' '}
+                  {def.spanLabel.toLowerCase()} {dec(model.span)} m
+                  {model.base === 'soldados' ? ` · ${model.engines} soldados` : ''}
                 </div>
               </div>
               <div className="absolute bottom-3 left-3 flex gap-2 text-xs text-muted">
                 <button type="button" className="btn text-xs!" onClick={() => setSpin(!spin)}>
-                  {spin ? 'Detener rotores' : 'Girar rotores'}
+                  {spin ? 'Pausar animación' : 'Animar'}
                 </button>
                 <span className="self-center">
                   Arrastra para girar · rueda para acercar · clic derecho para desplazar
@@ -320,7 +376,7 @@ export default function ModelWorkshop() {
         </main>
 
         <aside className="ws-side border-l border-line">
-          {model && eng ? (
+          {model && def ? (
             <>
               <section className="sec">
                 <h3 className="sec-h big">Modelo</h3>
@@ -339,106 +395,136 @@ export default function ModelWorkshop() {
                       value={model.base}
                       onChange={(e) => changeBase(e.target.value as ModelBase)}
                     >
-                      {MODEL_BASES.map((b) => (
-                        <option key={b} value={b}>
-                          {BASE_DEFS[b].name}
-                        </option>
+                      {DOMAINS.map((d) => (
+                        <optgroup key={d} label={DOMAIN_NAMES[d]}>
+                          {MODEL_BASES.filter((b) => domainOf(b) === d).map((b) => (
+                            <option key={b} value={b}>
+                              {BASE_DEFS[b].name}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </label>
-                  <label className="field">
-                    Matrícula
-                    <input
-                      type="text"
-                      value={model.code}
-                      placeholder="Opcional"
-                      onChange={(e) => set({ code: e.target.value })}
-                    />
-                  </label>
-                </div>
-              </section>
-              <section className="sec">
-                <h3 className="sec-h">Medidas</h3>
-                <Num
-                  label="Largo"
-                  unit=" m"
-                  value={model.length}
-                  min={big ? 3 : 0.3}
-                  max={big ? 60 : 8}
-                  step={big ? 0.5 : 0.1}
-                  onChange={(length) => set({ length })}
-                />
-                <Num
-                  label={model.base === 'helicoptero' ? 'Diámetro del rotor' : 'Envergadura'}
-                  unit=" m"
-                  value={model.span}
-                  min={big ? 3 : 0.3}
-                  max={big ? 60 : 8}
-                  step={big ? 0.5 : 0.1}
-                  onChange={(span) => set({ span })}
-                />
-                <Num
-                  label={eng.label}
-                  value={model.engines}
-                  min={eng.min}
-                  max={eng.max}
-                  step={eng.step}
-                  onChange={(engines) => set({ engines })}
-                />
-                <Num
-                  label="Palas por hélice o rotor"
-                  value={model.blades}
-                  min={2}
-                  max={6}
-                  step={1}
-                  onChange={(blades) => set({ blades })}
-                />
-                {isPlane ? (
-                  <div className="row">
+                  {def.variants ? (
                     <label className="field">
-                      Cola
+                      {def.variants.label}
                       <select
-                        value={model.tail}
-                        onChange={(e) => set({ tail: e.target.value as TailType })}
+                        value={model.variant}
+                        onChange={(e) => set({ variant: e.target.value })}
                       >
-                        {TAIL_TYPES.map((t) => (
-                          <option key={t} value={t}>
-                            {TAIL_NAMES[t]}
+                        {Object.entries(def.variants.options).map(([k, v]) => (
+                          <option key={k} value={k}>
+                            {v}
                           </option>
                         ))}
                       </select>
                     </label>
-                    <label className="field">
-                      Alas
-                      <select
-                        value={model.highWing ? 'alta' : 'baja'}
-                        onChange={(e) => set({ highWing: e.target.value === 'alta' })}
-                      >
-                        <option value="alta">Altas</option>
-                        <option value="baja">Bajas</option>
-                      </select>
-                    </label>
-                  </div>
-                ) : null}
+                  ) : null}
+                </div>
                 <label className="field">
-                  Carga
-                  <select
-                    value={model.payload}
-                    onChange={(e) => set({ payload: e.target.value as Payload })}
-                  >
-                    {PAYLOADS.map((p) => (
-                      <option key={p} value={p}>
-                        {PAYLOAD_NAMES[p]}
-                      </option>
-                    ))}
-                  </select>
+                  {domain === 'personal'
+                    ? 'Distintivo'
+                    : domain === 'mar'
+                      ? 'Numeral'
+                      : 'Matrícula'}
+                  <input
+                    type="text"
+                    value={model.code}
+                    placeholder="Opcional"
+                    onChange={(e) => set({ code: e.target.value })}
+                  />
                 </label>
               </section>
+              <section className="sec">
+                <h3 className="sec-h">Medidas</h3>
+                <Num
+                  label={def.lengthLabel}
+                  unit=" m"
+                  value={model.length}
+                  {...def.length}
+                  onChange={(length) => set({ length })}
+                />
+                <Num
+                  label={def.spanLabel}
+                  unit=" m"
+                  value={model.span}
+                  {...def.span}
+                  onChange={(span) => set({ span })}
+                />
+                {def.count ? (
+                  <Num
+                    label={def.count.label}
+                    value={model.engines}
+                    min={def.count.min}
+                    max={def.count.max}
+                    step={def.count.step}
+                    onChange={(engines) => set({ engines })}
+                  />
+                ) : null}
+                {def.blades ? (
+                  <Num
+                    label="Palas por hélice o rotor"
+                    value={model.blades}
+                    min={2}
+                    max={6}
+                    step={1}
+                    onChange={(blades) => set({ blades })}
+                  />
+                ) : null}
+                {def.tails || def.wings ? (
+                  <div className="row">
+                    {def.tails ? (
+                      <label className="field">
+                        Cola
+                        <select
+                          value={model.tail}
+                          onChange={(e) => set({ tail: e.target.value as TailType })}
+                        >
+                          {def.tails.map((t) => (
+                            <option key={t} value={t}>
+                              {TAIL_NAMES[t]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+                    {def.wings ? (
+                      <label className="field">
+                        Alas
+                        <select
+                          value={model.highWing ? 'alta' : 'baja'}
+                          onChange={(e) => set({ highWing: e.target.value === 'alta' })}
+                        >
+                          <option value="alta">Altas</option>
+                          <option value="baja">Bajas</option>
+                        </select>
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
+                {def.payloads.length > 1 ? (
+                  <label className="field">
+                    {def.payloadLabel}
+                    <select
+                      value={model.payload}
+                      onChange={(e) => set({ payload: e.target.value as Payload })}
+                    >
+                      {def.payloads.map((p) => (
+                        <option key={p} value={p}>
+                          {PAYLOAD_NAMES[p]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </section>
+              <MeshSection model={model} set={set} />
               <section className="sec">
                 <h3 className="sec-h">Pintura</h3>
                 <div className="row">
                   <label className="field">
-                    Fuselaje
+                    {domain === 'personal' ? 'Uniforme' : domain === 'mar' ? 'Casco' : 'Principal'}
                     <input
                       type="color"
                       value={model.color}
@@ -446,7 +532,7 @@ export default function ModelWorkshop() {
                     />
                   </label>
                   <label className="field">
-                    Detalles
+                    {domain === 'personal' ? 'Equipo y casco' : 'Detalles'}
                     <input
                       type="color"
                       value={model.accent}
@@ -455,14 +541,7 @@ export default function ModelWorkshop() {
                   </label>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {[
-                    ['Gris', '#8a949c'],
-                    ['Verde oliva', '#5d6b4a'],
-                    ['Camuflaje', '#4f5d3f'],
-                    ['Arena', '#b39d76'],
-                    ['Blanco', '#e3e6ea'],
-                    ['Negro', '#30353b'],
-                  ].map(([n, c]) => (
+                  {SWATCHES[domain].map(([n, c]) => (
                     <button
                       key={c}
                       type="button"
@@ -477,6 +556,20 @@ export default function ModelWorkshop() {
               </section>
               <section className="sec">
                 <h3 className="sec-h">En el mapa</h3>
+                <button type="button" className="btn primary mb-2 w-full" onClick={place}>
+                  Colocar en el mapa
+                </button>
+                <p className="note mb-2">
+                  Haz clic en el mapa para poner una unidad de{' '}
+                  {plainName(UNITS[def.unit].name).toLowerCase()} con este modelo. En la vista 3D se
+                  ve{' '}
+                  {domain === 'aire'
+                    ? 'volando a su altura'
+                    : domain === 'mar'
+                      ? 'a flote'
+                      : 'sobre el relieve'}
+                  , orientada según su recorrido.
+                </p>
                 {users.length ? (
                   <ul className="mb-2 text-[13px]">
                     {users.map((u) => (
@@ -487,12 +580,7 @@ export default function ModelWorkshop() {
                       </li>
                     ))}
                   </ul>
-                ) : (
-                  <p className="note">
-                    Ninguna unidad usa este modelo. Selecciona una unidad en el mapa y asígnalo; se
-                    verá volando en la vista 3D.
-                  </p>
-                )}
+                ) : null}
                 {selUnit ? (
                   <button
                     type="button"

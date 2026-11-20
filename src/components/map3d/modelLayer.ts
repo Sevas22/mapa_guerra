@@ -1,26 +1,27 @@
 /**
- * Capa personalizada de MapLibre que dibuja con three.js los modelos 3D (aeronaves y drones)
- * de las unidades que tienen uno asignado: a su altura de vuelo sobre el relieve, orientados
- * según su recorrido en la línea de tiempo y con los rotores girando.
+ * Capa personalizada de MapLibre que dibuja con three.js los modelos 3D de las unidades que
+ * tienen uno asignado: aeronaves a su altura de vuelo, vehículos y tropas sobre el relieve y
+ * embarcaciones a flote, orientados según su recorrido, con rotores y animaciones en marcha.
  */
 import { MercatorCoordinate, type CustomLayerInterface, type Map as GlMap } from 'maplibre-gl';
 import * as THREE from 'three';
-import { headingBetween, modelSize, type Model3D } from '@/domain/models3d';
+import { domainOf, headingBetween, modelSize, type Model3D } from '@/domain/models3d';
 import { objectStateAt } from '@/domain/timeline';
 import type { UnitObject } from '@/domain/types';
-import { buildModel, disposeModel, spinRotors } from '@/lib/model3dThree';
+import { instantiateModel, type ModelInstance } from '@/lib/model3dThree';
 import { useEditorStore } from '@/store/editorStore';
 
 interface Entry {
   model: Model3D;
   root: THREE.Group;
+  inst: ModelInstance;
   /** Línea vertical hasta el suelo, para leer la altura. */
   stem: THREE.Line;
   heading: number;
 }
 
 /** Tamaño en pantalla (px) que se garantiza en el modo «visible». */
-const VISIBLE_PX = 64;
+export const VISIBLE_PX = 64;
 const EARTH_M = 40075016.686;
 
 export interface ModelLayer extends CustomLayerInterface {
@@ -37,8 +38,8 @@ export function createModelLayer(): ModelLayer {
   const timer = new THREE.Timer();
   let visible = true;
 
-  scene.add(new THREE.HemisphereLight('#eef3f8', '#3a3a2a', 1.6));
-  const sun = new THREE.DirectionalLight('#fff4e0', 2);
+  scene.add(new THREE.HemisphereLight('#eef3f8', '#4a4a3a', 2.2));
+  const sun = new THREE.DirectionalLight('#fff4e0', 2.6);
   sun.position.set(0.6, 1, 0.4);
   scene.add(sun);
   const stemMat = new THREE.LineDashedMaterial({
@@ -49,15 +50,19 @@ export function createModelLayer(): ModelLayer {
     opacity: 0.7,
   });
 
+  const release = (e: Entry) => {
+    scene.remove(e.root);
+    e.inst.dispose();
+    e.stem.geometry.dispose();
+  };
+
   const entryFor = (o: UnitObject, model: Model3D): Entry => {
     let e = entries.get(o.id);
     if (e && e.model === model) return e;
-    if (e) {
-      scene.remove(e.root);
-      disposeModel(e.root);
-    }
+    if (e) release(e);
     const root = new THREE.Group();
-    root.add(buildModel(model));
+    const inst = instantiateModel(model, () => map?.triggerRepaint());
+    root.add(inst.root);
     const stem = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(0, 0, 0),
@@ -68,7 +73,7 @@ export function createModelLayer(): ModelLayer {
     stem.computeLineDistances();
     root.add(stem);
     scene.add(root);
-    e = { model, root, stem, heading: e?.heading ?? 0 };
+    e = { model, root, inst, stem, heading: e?.heading ?? 0 };
     entries.set(o.id, e);
     return e;
   };
@@ -76,8 +81,7 @@ export function createModelLayer(): ModelLayer {
   const drop = (id: string) => {
     const e = entries.get(id);
     if (!e) return;
-    scene.remove(e.root);
-    disposeModel(e.root);
+    release(e);
     entries.delete(id);
   };
 
@@ -95,6 +99,9 @@ export function createModelLayer(): ModelLayer {
       map = m;
       renderer = new THREE.WebGLRenderer({ canvas: m.getCanvas(), context: gl, antialias: true });
       renderer.autoClear = false;
+      // Tono cinematográfico: luces altas suaves y colores más naturales en los modelos.
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
     },
 
     onRemove() {
@@ -136,11 +143,15 @@ export function createModelLayer(): ModelLayer {
           if (h != null) e.heading = h;
         }
 
-        const ground = map.queryTerrainElevation([s.lng, s.lat]) ?? 0;
+        const domain = domainOf(model.base);
+        let ground = map.queryTerrainElevation([s.lng, s.lat]) ?? 0;
+        // En el mar el modelo de elevación trae la batimetría: los buques flotan en el nivel 0.
+        if (domain === 'mar') ground = Math.max(0, ground);
         const mpp = (EARTH_M * Math.cos((s.lat * Math.PI) / 180)) / (512 * 2 ** zoom);
         const k = visible ? Math.max(1, (VISIBLE_PX * mpp) / modelSize(model)) : 1;
-        // El relieve está exagerado: la altura de vuelo se exagera igual para conservar la proporción.
-        let alt = (s.alt ?? o.altitude ?? 0) * exaggeration;
+        // El relieve está exagerado: la altura de vuelo se exagera igual para conservar la
+        // proporción. Lo que no vuela va siempre a ras del suelo o del agua.
+        let alt = domain === 'aire' ? (s.alt ?? o.altitude ?? 0) * exaggeration : 0;
         // Agrandado, el modelo taparía su símbolo: en vuelo se separa al menos una vez y media su
         // tamaño en pantalla. Posado (altura 0) queda sobre el terreno.
         if (visible && alt > 1) alt = Math.max(alt, modelSize(model) * k * 1.5);
@@ -165,10 +176,11 @@ export function createModelLayer(): ModelLayer {
 
       timer.update();
       const secs = timer.getElapsed();
+      const dt = Math.min(0.1, timer.getDelta());
       renderer.resetState();
       for (const { e } of draw) e.root.visible = false;
       for (const { e, matrix } of draw) {
-        spinRotors(e.root, secs);
+        e.inst.update(secs, dt);
         e.root.visible = true;
         camera.projectionMatrix = matrix;
         camera.projectionMatrixInverse.copy(matrix).invert();

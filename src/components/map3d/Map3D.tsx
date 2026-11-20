@@ -26,12 +26,14 @@ import {
   type SceneLabel,
 } from '@/domain/scene3d';
 import { markerSpecFor, type DocContext } from '@/domain/docCards';
+import { domainOf } from '@/domain/models3d';
+import { objectStateAt } from '@/domain/timeline';
 import type { IconSpec } from '@/domain/symbols';
 import type { MapObject } from '@/domain/types';
 import { currentView, getMap, setMap3d } from '@/lib/mapBridge';
 import { useEditorStore } from '@/store/editorStore';
 import { useMapStyleStore } from '@/store/mapStyleStore';
-import { createModelLayer, type ModelLayer } from './modelLayer';
+import { VISIBLE_PX, createModelLayer, type ModelLayer } from './modelLayer';
 
 // MapLibre dibuja en un worker aparte; el empaquetador sirve el archivo y da su URL.
 setWorkerUrl(new URL('maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).href);
@@ -334,6 +336,7 @@ export default function Map3D() {
     (map.getSource('scene') as GeoJSONSource | undefined)?.setData(scene.shapes);
 
     const byId = new Map(objects.map((o) => [o.id, o]));
+    const modelsById = new Map((st.scenario.models ?? []).map((m) => [m.id, m]));
     const seen = new Set<string>();
     for (const p of scene.points) {
       const o = byId.get(p.id);
@@ -343,18 +346,28 @@ export default function Map3D() {
         profiles: st.scenario.profiles,
         charts: st.scenario.charts,
       });
+      // Un modelo agrandado en el suelo (vehículo, buque, tropa o aeronave posada) quedaría
+      // tapado por su símbolo: el símbolo se sube por encima, como el rótulo de un videojuego.
+      let raise = 0;
+      const md = bigModels && o.kind === 'unit' && o.model3d ? modelsById.get(o.model3d) : null;
+      if (md && o.kind === 'unit') {
+        const s = objectStateAt(o, st.time, phases.length);
+        const alt = (s?.kind === 'point' ? s.alt : undefined) ?? o.altitude ?? 0;
+        if (domainOf(md.base) !== 'aire' || alt <= 1)
+          raise = Math.round(VISIBLE_PX * 0.6 + spec.iconSize[1] / 2);
+      }
       upsert(
         markers.current,
         p.id,
         [p.lng, p.lat],
         p.opacity,
-        spec.html,
+        `${spec.html}|${raise}`,
         (inner, marker) => {
           inner.className = spec.className;
           inner.style.width = `${spec.iconSize[0]}px`;
           inner.style.height = `${spec.iconSize[1]}px`;
           inner.innerHTML = spec.html;
-          marker.setOffset([-spec.iconAnchor[0], -spec.iconAnchor[1]]);
+          marker.setOffset([-spec.iconAnchor[0], -spec.iconAnchor[1] - raise]);
           marker.getElement().style.zIndex =
             o.kind === 'unit' ? '2' : o.type === 'perfil' || o.type === 'grafo' ? '0' : '1';
         },
@@ -384,7 +397,7 @@ export default function Map3D() {
         e.marker.remove();
         labels.current.delete(key);
       }
-  }, [map, upsert]);
+  }, [map, upsert, bigModels]);
 
   // Redibujar con cada instante de la línea de tiempo y con cada cambio del escenario.
   useEffect(() => {

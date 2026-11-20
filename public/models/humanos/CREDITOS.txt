@@ -1,0 +1,14 @@
+Cuerpos humanos realistas
+=========================
+
+hombre.glb, mujer.glb y pelo-*.glb provienen del paquete gratuito
+"Universal Base Characters" (version Standard) de Quaternius:
+https://quaternius.com/packs/universalbasecharacters.html
+
+Licencia: CC0 1.0 Universal (dominio publico).
+https://creativecommons.org/publicdomain/zero/1.0/
+Ver LICENCIA-Quaternius.txt.
+
+Cambios: cada modelo .gltf + .bin + texturas se empaqueto en un unico .glb,
+con las texturas reducidas (1024 px el cuerpo, 512 px el cabello) y la
+textura de piel clara como base para teñir el tono de cada persona.

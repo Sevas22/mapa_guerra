@@ -46,6 +46,21 @@ export const getMedia = (id: string): Promise<Blob | undefined> =>
 
 export const deleteMedia = (id: string): Promise<undefined> => tx('readwrite', (s) => s.delete(id));
 
+/** Guarda un modelo 3D (.glb o .gltf autocontenido) y devuelve su id, o un error legible. */
+export async function addMeshFile(file: File): Promise<{ id: string } | { error: string }> {
+  if (!/\.(glb|gltf)$/i.test(file.name))
+    return { error: `«${file.name}» no es un modelo .glb o .gltf.` };
+  if (file.size > MAX_MEDIA_BYTES)
+    return { error: `«${file.name}» pesa más de ${MAX_MEDIA_BYTES / 1024 / 1024} MB.` };
+  const id = 'g' + uid() + uid();
+  try {
+    await putMedia(id, file);
+  } catch {
+    return { error: 'El navegador no permitió guardar el archivo (¿espacio lleno?).' };
+  }
+  return { id };
+}
+
 export function kindOf(file: File): MediaKind | null {
   if (file.type.startsWith('image/')) return 'image';
   if (file.type.startsWith('video/')) return 'video';
@@ -98,13 +113,23 @@ const blobToDataUrl = (b: Blob) =>
     r.readAsDataURL(b);
   });
 
+/** Ids de todo lo que vive en IndexedDB: adjuntos y modelos 3D propios. */
+export function storedIds(s: Scenario): string[] {
+  const own = (id: string) => !id.startsWith('/');
+  return [
+    ...collectMedia(s).flatMap((r) => (r.url ? [] : [r.id])),
+    ...(s.models ?? []).flatMap((m) => (m.mesh ? [m.mesh.id] : [])),
+    ...(s.humanMesh ? [s.humanMesh.id] : []),
+  ].filter(own);
+}
+
 /** Copia del escenario con el contenido de los adjuntos incrustado (`mediaData`). */
 export async function withEmbeddedMedia(s: Scenario): Promise<Scenario> {
   const data: Record<string, string> = {};
-  for (const ref of collectMedia(s)) {
-    if (ref.url || data[ref.id]) continue;
-    const blob = await getMedia(ref.id).catch(() => undefined);
-    if (blob) data[ref.id] = await blobToDataUrl(blob);
+  for (const id of storedIds(s)) {
+    if (data[id]) continue;
+    const blob = await getMedia(id).catch(() => undefined);
+    if (blob) data[id] = await blobToDataUrl(blob);
   }
   return Object.keys(data).length ? { ...s, mediaData: data } : s;
 }

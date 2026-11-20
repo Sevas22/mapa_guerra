@@ -158,14 +158,35 @@ Se abren desde **Herramientas**, en la paleta. Cada una ocupa la pantalla comple
 al mapa** regresa. Todo se guarda en el escenario (y en el `.json` exportado) y se puede
 deshacer con Ctrl+Z.
 
-**Taller 3D.** Crea aviones, helicópteros y drones a partir de un modelo de partida y ajústalos:
-largo, envergadura o diámetro del rotor, motores o rotores, palas, cola, alas altas o bajas,
-carga (cámara, armamento, contenedor) y colores. El visor se gira con el ratón. Para verlo en el
-mapa, selecciona una unidad y elige el modelo en **Modelo 3D** del inspector (o **Asignar** en el
-taller). En la vista 3D vuela a su altura sobre el relieve, orientado según su recorrido y con
-los rotores girando. La altura general se puede cambiar por fase (**En esta fase**; 0 = posado),
-así se ven despegues y aterrizajes. **Modelos: visibles** agranda los modelos para que se lean a
-cualquier zoom; **tamaño real** los muestra a escala. El ejemplo *Colibrí* trae el helicóptero.
+**Taller 3D.** Crea equipos y tropas a partir de un modelo de partida, agrupados en cuatro
+pestañas: **Aire** (aviones de hélice, cazas a reacción, helicópteros utilitarios y de ataque,
+drones multirrotor y de ala fija), **Tierra** (carro de combate, blindados de ruedas y de orugas,
+camiones de tropas, cisterna, lanzacohetes, radar o taller, camionetas, vehículo táctico ligero y
+obuses remolcados o autopropulsados), **Mar y río** (lancha patrullera, bote semirrígido, fragata,
+buque de desembarco y submarino) e **Infantería** (un soldado o un grupo de hasta 12 en cuña,
+línea, columna o fila india, con fusiles y un arma especial: ametralladora, lanzador antitanque o
+mortero). Cada tipo muestra solo sus controles: medidas (largo, envergadura, ancho, eslora,
+manga, estatura o separación), cantidad (motores, rotores, ejes, ruedas de rodaje, soldados),
+variante, armamento o carrocería y colores. Todos los modelos son genéricos. El visor se gira
+con el ratón y tiene luz de estudio y tono cinematográfico.
+
+**Modelo realista (.glb).** Las piezas paramétricas sirven de base, pero para un acabado de
+videojuego cada modelo puede usar un archivo propio .glb (hecho en Blender o descargado de una
+biblioteca con licencia libre), con sus texturas y animaciones. Se escala al largo (o a la
+estatura, en la infantería) indicado en Medidas; **Frente** lo gira si no mira hacia adelante y
+**Animación** elige la que se reproduce (caminar, reposo…). La infantería repite la figura en
+cada puesto de la formación. El archivo se guarda en el navegador y viaja dentro del JSON al
+exportar.
+
+**Colocar en el mapa** pone una unidad con el símbolo que corresponde (aviación, blindados,
+mecanizada, transportes, artillería, naval, infantería...) y el modelo ya asignado: haz clic en
+el mapa. También se puede elegir el modelo de una unidad existente en **Modelo 3D** del
+inspector (o **Asignar** en el taller). En la vista 3D las aeronaves vuelan a su altura sobre el
+relieve, los vehículos y las tropas van sobre el terreno y las embarcaciones a flote, todos
+orientados según su recorrido. La altura de vuelo se puede cambiar por fase (**En esta fase**;
+0 = posado), así se ven despegues y aterrizajes. **Modelos: visibles** agranda los modelos para
+que se lean a cualquier zoom y sube el símbolo de los que están en el suelo por encima del
+modelo; **tamaño real** los muestra a escala. El ejemplo *Colibrí* trae el helicóptero.
 
 **Perfiles de operación.** Una ficha por persona relacionada con la operación: rol (propio,
 integrante de la amenaza, persona de interés o fuente con su tipo), nombre, alias, grado, cargo,
@@ -173,6 +194,26 @@ organización, estructura, ubicación, contacto, foto y notas. **Cargar planilla
 (o JSON); **Descargar plantilla** da un CSV de ejemplo con las columnas. Marca varios perfiles y
 usa **Colocar plantilla en el mapa**, o **Colocar esta ficha en el mapa** para uno solo; luego
 haz clic en el mapa. En el inspector de la ficha se eligen los perfiles y el ancho.
+
+**Morfología.** En cada perfil se registran las características físicas: sexo, edad aproximada,
+estatura (cm), peso (kg), somatotipo (ectomorfo, mesomorfo o endomorfo), color de piel, cabello y
+peinado, vello facial, ojos y señas particulares (cicatrices, tatuajes, cojera…). Se calculan el
+IMC con su clasificación (bajo peso, normal, sobrepeso, obesidad) y la complexión (flaco, media,
+atlética, robusta, gordo). La descripción aparece en la ficha del mapa y en la planilla CSV
+(columnas Sexo, Edad, Estatura, Peso, Somatotipo, Piel, Ojos y Señas particulares). Al lado se ve
+la **figura 3D** de la persona con esas proporciones y la vestimenta elegida (camuflado o civil,
+con o sin arma); **Crear figura 3D y colocar en el mapa** la convierte en modelo del taller y pone
+la unidad: integrantes de la amenaza en rojo y propios en azul.
+
+**Cuerpo humano realista.** Por defecto la figura de la persona es un cuerpo humano real
+(hombre o mujer según el sexo del perfil; modelos de Quaternius, licencia CC0, en
+`public/models/humanos`). Se adapta a cada persona: la estatura lo escala; el peso y el
+somatotipo ensanchan hombros, cadera y abdomen y engrosan brazos y piernas; la piel toma el tono
+elegido; el cabello sale según el peinado (corto, rapado, largo, recogido o calvo) y el color, con
+barba si se marca. **Figura simple** vuelve a la figura con vestimenta (camuflado o civil, con o
+sin arma). **Usar un cuerpo propio (.glb)** reemplaza el cuerpo incluido por otro modelo (p. ej.
+de MakeHuman exportado desde Blender); si trae formas de mezcla de peso, delgadez, músculo o sexo,
+se usan esas.
 
 **Grafos de vínculos.** Lámina de análisis de redes: integrantes de la amenaza (rombos),
 personas, fuentes (anillo de color según el tipo), propios, lugares y vehículos o propiedades

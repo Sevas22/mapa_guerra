@@ -4,6 +4,13 @@
  * planilla CSV, se colocan en el mapa como fichas y alimentan los grafos de vínculos.
  */
 import { uid } from './id';
+import {
+  SKIN_TONES,
+  SOMATOTYPES,
+  hasMorphology,
+  newMorphology,
+  type Morphology,
+} from './morphology';
 
 export const PROFILE_ROLES = ['propio', 'amenaza', 'persona', 'fuente'] as const;
 export type ProfileRole = (typeof PROFILE_ROLES)[number];
@@ -36,6 +43,8 @@ export interface Profile {
   notas: string;
   /** Foto reducida como data URL (JPEG de ~200 px). */
   foto?: string;
+  /** Morfología: características físicas (estatura, peso, somatotipo, piel…). */
+  fisico?: Morphology;
 }
 
 export const ROLE_DEFS: Record<ProfileRole, { name: string; color: string }> = {
@@ -91,7 +100,29 @@ export const CSV_COLUMNS = [
   ['documento', 'Documento'],
   ['ubicacion', 'Ubicación'],
   ['notas', 'Notas'],
+  ['sexo', 'Sexo'],
+  ['edad', 'Edad'],
+  ['estatura', 'Estatura (cm)'],
+  ['peso', 'Peso (kg)'],
+  ['somatotipo', 'Somatotipo'],
+  ['piel', 'Piel'],
+  ['ojos', 'Ojos'],
+  ['senas', 'Señas particulares'],
 ] as const;
+
+/** Columnas que van en `fisico`. */
+const BODY_KEYS = [
+  'sexo',
+  'edad',
+  'estatura',
+  'peso',
+  'somatotipo',
+  'piel',
+  'ojos',
+  'senas',
+] as const;
+type BodyKey = (typeof BODY_KEYS)[number];
+const isBodyKey = (k: string): k is BodyKey => (BODY_KEYS as readonly string[]).includes(k);
 
 type CsvKey = (typeof CSV_COLUMNS)[number][0];
 
@@ -133,7 +164,81 @@ const HEADER_ALIASES: Record<string, CsvKey> = {
   lugar: 'ubicacion',
   notas: 'notas',
   observaciones: 'notas',
+  sexo: 'sexo',
+  genero: 'sexo',
+  edad: 'edad',
+  estatura: 'estatura',
+  'estatura cm': 'estatura',
+  altura: 'estatura',
+  talla: 'estatura',
+  peso: 'peso',
+  'peso kg': 'peso',
+  somatotipo: 'somatotipo',
+  biotipo: 'somatotipo',
+  contextura: 'somatotipo',
+  piel: 'piel',
+  'color de piel': 'piel',
+  tez: 'piel',
+  ojos: 'ojos',
+  'color de ojos': 'ojos',
+  senas: 'senas',
+  'senas particulares': 'senas',
 };
+
+/** Número de la planilla («1,72», «172 cm», «80kg»). La estatura en metros pasa a cm. */
+function parseNum(v: string, key: 'edad' | 'estatura' | 'peso'): number {
+  const n = Number((v.match(/\d+(?:[.,]\d+)?/)?.[0] ?? '').replace(',', '.'));
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return key === 'estatura' && n < 3 ? Math.round(n * 100) : n;
+}
+
+/** Morfología a partir de las columnas físicas de una fila, o `undefined` si no hay datos. */
+function morphologyFromRow(rec: Partial<Record<CsvKey, string>>): Morphology | undefined {
+  const f = (k: BodyKey) => (rec[k] ?? '').trim();
+  const somato = fold(f('somatotipo'));
+  const sexo = fold(f('sexo'));
+  const piel = fold(f('piel'));
+  const m = newMorphology({
+    sexo: /^(m|f)$/.test(sexo)
+      ? sexo === 'm'
+        ? 'masculino'
+        : 'femenino'
+      : sexo.startsWith('mas') || sexo.startsWith('hom')
+        ? 'masculino'
+        : sexo.startsWith('fem') || sexo.startsWith('muj')
+          ? 'femenino'
+          : '',
+    edad: parseNum(f('edad'), 'edad'),
+    estatura: parseNum(f('estatura'), 'estatura'),
+    peso: parseNum(f('peso'), 'peso'),
+    somatotipo: SOMATOTYPES.find((s) => somato.startsWith(s.slice(0, 4))) ?? '',
+    ...(SKIN_TONES.find((t) => fold(t.name) === piel)
+      ? { piel: SKIN_TONES.find((t) => fold(t.name) === piel)!.color }
+      : {}),
+    ojos: f('ojos').toLowerCase(),
+    senas: f('senas'),
+  });
+  return hasMorphology(m) ? m : undefined;
+}
+
+/** Valor de una columna física para la planilla. */
+function bodyCell(m: Morphology | undefined, k: BodyKey): string {
+  if (!m) return '';
+  switch (k) {
+    case 'sexo':
+      return m.sexo === 'masculino' ? 'Masculino' : m.sexo === 'femenino' ? 'Femenino' : '';
+    case 'edad':
+    case 'estatura':
+    case 'peso':
+      return m[k] > 0 ? String(m[k]).replace('.', ',') : '';
+    case 'piel':
+      return SKIN_TONES.find((t) => t.color === m.piel)?.name ?? '';
+    case 'somatotipo':
+      return m.somatotipo ? m.somatotipo[0]!.toUpperCase() + m.somatotipo.slice(1) : '';
+    default:
+      return m[k];
+  }
+}
 
 /** Interpreta el rol escrito en la planilla. */
 export function parseRole(v: string): ProfileRole {
@@ -214,6 +319,7 @@ export function profilesFromCsv(text: string): CsvImport {
     if (!rec.nombre && !rec.alias) return [];
     const rol = parseRole(rec.rol ?? '');
     const fuente = rol === 'fuente' ? (parseSource(rec.fuente ?? '') ?? 'estudio') : undefined;
+    const fisico = morphologyFromRow(rec);
     return [
       newProfile({
         nombre: rec.nombre ?? '',
@@ -228,6 +334,7 @@ export function profilesFromCsv(text: string): CsvImport {
         documento: rec.documento ?? '',
         ubicacion: rec.ubicacion ?? '',
         notas: rec.notas ?? '',
+        ...(fisico ? { fisico } : {}),
       }),
     ];
   });
@@ -246,6 +353,7 @@ export function profilesToCsv(profiles: readonly Profile[]): string {
       CSV_COLUMNS.map(([k]) => {
         if (k === 'rol') return ROLE_DEFS[p.rol].name;
         if (k === 'fuente') return p.fuente ? SOURCE_DEFS[p.fuente].name : '';
+        if (isBodyKey(k)) return csvCell(bodyCell(p.fisico, k));
         return csvCell(p[k] ?? '');
       }).join(';'),
     );
@@ -269,6 +377,16 @@ export const CSV_TEMPLATE = profilesToCsv([
     estructura: 'Mando y control',
     rol: 'amenaza',
     ubicacion: 'Sector K',
+    fisico: newMorphology({
+      sexo: 'masculino',
+      edad: 45,
+      estatura: 168,
+      peso: 92,
+      somatotipo: 'endomorfo',
+      piel: '#a87653',
+      ojos: 'cafés',
+      senas: 'Cicatriz en la ceja izquierda',
+    }),
   }),
   newProfile({
     alias: 'K-Tauro',

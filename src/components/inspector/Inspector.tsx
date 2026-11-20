@@ -35,7 +35,7 @@ import type {
   TravelMode,
 } from '@/domain/types';
 import { isDocPoint } from '@/domain/docCards';
-import { BASE_DEFS, DEFAULT_ALTITUDE } from '@/domain/models3d';
+import { BASE_DEFS, DEFAULT_ALTITUDE, domainOf } from '@/domain/models3d';
 import { ROLE_DEFS, ROLE_ORDER, profileTitle } from '@/domain/profiles';
 import { useWorkspace } from '@/store/workspaceStore';
 import { MediaEditor } from '../media/Media';
@@ -505,7 +505,7 @@ function SymbolFieldsEditor({ o }: { o: MapObject }) {
   );
 }
 
-/** Modelo 3D de una unidad (aeronave o dron) y su altura de vuelo. */
+/** Modelo 3D de una unidad (aeronave, vehículo, embarcación o tropa) y su altura de vuelo. */
 function ModelSection({ o }: { o: Extract<MapObject, { kind: 'unit' }> }) {
   const models = useEditorStore((s) => s.scenario.models);
   const update = useEditorStore((s) => s.updateObject);
@@ -518,7 +518,7 @@ function ModelSection({ o }: { o: Extract<MapObject, { kind: 'unit' }> }) {
     <section className="sec">
       <h2 className="sec-h">Modelo 3D</h2>
       <label className="field">
-        Aeronave o dron
+        Equipo o tropa
         <select
           value={o.model3d ?? ''}
           onChange={(e) => {
@@ -540,7 +540,7 @@ function ModelSection({ o }: { o: Extract<MapObject, { kind: 'unit' }> }) {
           ))}
         </select>
       </label>
-      {m ? (
+      {m && domainOf(m.base) === 'aire' ? (
         <div className="row">
           <label className="field">
             Altura general (m)
@@ -579,7 +579,13 @@ function ModelSection({ o }: { o: Extract<MapObject, { kind: 'unit' }> }) {
         {m ? 'Editar en el taller 3D' : 'Abrir el taller 3D'}
       </button>
       {m ? (
-        <p className="note mt-1.5">Se ve volando en la vista 3D, orientado según su recorrido.</p>
+        <p className="note mt-1.5">
+          {domainOf(m.base) === 'aire'
+            ? 'Se ve volando en la vista 3D, orientado según su recorrido.'
+            : domainOf(m.base) === 'mar'
+              ? 'Se ve a flote en la vista 3D, orientado según su recorrido.'
+              : 'Se ve sobre el relieve en la vista 3D, orientado según su recorrido.'}
+        </p>
       ) : null}
     </section>
   );

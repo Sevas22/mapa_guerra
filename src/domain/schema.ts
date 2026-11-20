@@ -13,6 +13,7 @@ import {
   UNIT_TYPES,
 } from './ids';
 import { EDGE_KINDS, NODE_KINDS, TAB_SIDES } from './linkChart';
+import { FACIAL_HAIR, HAIR_STYLES, SEXES, SOMATOTYPES } from './morphology';
 import { MODEL_BASES, PAYLOADS, TAIL_TYPES, normalizeModel } from './models3d';
 import { PROFILE_ROLES, SOURCE_TYPES } from './profiles';
 import type { Scenario } from './types';
@@ -161,6 +162,7 @@ export const PhaseSchema = z.object({
 });
 
 const str = z.string().catch('').default('');
+const num = z.number().finite();
 
 export const ProfileSchema = z.object({
   id: z
@@ -180,9 +182,23 @@ export const ProfileSchema = z.object({
   ubicacion: str,
   notas: str,
   foto: z.string().optional().catch(undefined),
+  fisico: z
+    .object({
+      sexo: z.enum(SEXES).or(z.literal('')).catch(''),
+      edad: num.min(0).catch(0).default(0),
+      estatura: num.min(0).catch(0).default(0),
+      peso: num.min(0).catch(0).default(0),
+      somatotipo: z.enum(SOMATOTYPES).or(z.literal('')).catch(''),
+      piel: z.string().catch('#a87653').default('#a87653'),
+      cabello: z.string().catch('#1c1916').default('#1c1916'),
+      peinado: z.enum(HAIR_STYLES).catch('corto'),
+      barba: z.enum(FACIAL_HAIR).catch('ninguno'),
+      ojos: str,
+      senas: str,
+    })
+    .optional()
+    .catch(undefined),
 });
-
-const num = z.number().finite();
 
 export const LinkChartSchema = z.object({
   id: z
@@ -233,6 +249,16 @@ export const LinkChartSchema = z.object({
     .default([]),
 });
 
+const MeshSchema = z.object({
+  id: z.string().min(1),
+  name: str,
+  yaw: num.catch(0).default(0),
+  anim: str,
+  parts: z.array(z.string()).optional().catch(undefined),
+  skinRef: z.string().optional().catch(undefined),
+  hairRef: z.string().optional().catch(undefined),
+});
+
 export const Model3DSchema = z
   .object({
     id: z
@@ -241,6 +267,7 @@ export const Model3DSchema = z
       .default(() => 'md' + uid()),
     name: z.string().catch('Modelo').default('Modelo'),
     base: z.enum(MODEL_BASES).catch('avion'),
+    variant: z.string().catch('').default(''),
     color: z.string().catch('#8a949c').default('#8a949c'),
     accent: z.string().catch('#2b3440').default('#2b3440'),
     length: num.positive().catch(10),
@@ -251,6 +278,20 @@ export const Model3DSchema = z
     payload: z.enum(PAYLOADS).catch('ninguna'),
     highWing: z.boolean().catch(false).default(false),
     code: str,
+    mesh: MeshSchema.optional().catch(undefined),
+    body: z
+      .object({
+        sexo: z.enum(SEXES).or(z.literal('')).catch(''),
+        peso: num.min(0).catch(0).default(0),
+        somatotipo: z.enum(SOMATOTYPES).or(z.literal('')).catch(''),
+        piel: z.string().catch('#a87653').default('#a87653'),
+        cabello: z.string().catch('#1c1916').default('#1c1916'),
+        peinado: z.enum(HAIR_STYLES).catch('corto'),
+        barba: z.enum(FACIAL_HAIR).catch('ninguno'),
+        civil: z.boolean().catch(false).default(false),
+      })
+      .optional()
+      .catch(undefined),
   })
   .transform(normalizeModel);
 
@@ -273,6 +314,7 @@ export const ScenarioSchema = z.object({
   profiles: listOf(ProfileSchema),
   charts: listOf(LinkChartSchema),
   models: listOf(Model3DSchema),
+  humanMesh: MeshSchema.optional().catch(undefined),
   v: z.literal(1).default(1),
   name: z.string().default('Escenario sin título'),
   speed: z.number().positive().catch(2),

@@ -3,6 +3,7 @@
  * el mismo `IconSpec` que los símbolos, así que sirven en Leaflet (2D) y MapLibre (3D).
  */
 import { profileMap, renderChartSVG, type LinkChart } from './linkChart';
+import { hasMorphology, morphologySummary } from './morphology';
 import { ROLE_DEFS, ROLE_ORDER, SOURCE_DEFS, profileTitle, type Profile } from './profiles';
 import { iconSpecFor, type IconSpec } from './symbols';
 import type { MapObject, PointObject } from './types';
@@ -60,6 +61,16 @@ export function profileCardSpec(o: PointObject, ctx: DocContext, selected: boole
     const p = list[0]!;
     h = header + singleBody;
     body = `<div class="pc-one">${photoHtml(p, 84, 104)}<div class="pc-data">${roleTag(p)}<div class="pc-name">${esc(profileTitle(p))}</div>${field('Grado', p.grado)}${field('Cargo', p.cargo)}${field('Org.', p.organizacion)}${field('Estructura', p.estructura)}${field('Ubicación', p.ubicacion)}${field('Tel.', p.telefono)}${field('Doc.', p.documento)}</div></div>`;
+    // Descripción física debajo, con el alto según las líneas que ocupe.
+    if (hasMorphology(p.fisico)) {
+      const texts = [
+        morphologySummary(p.fisico),
+        p.fisico.senas ? `Señas: ${p.fisico.senas}` : '',
+      ].filter(Boolean);
+      const chars = (w - 20) / 6;
+      h += 12 + texts.reduce((a, t) => a + Math.ceil(t.length / chars), 0) * 14;
+      body += `<div class="pc-fis">${texts.map((t) => `<div>${esc(t)}</div>`).join('')}</div>`;
+    }
   } else if (list.length) {
     const sorted = [...list].sort((a, b) => ROLE_ORDER[a.rol] - ROLE_ORDER[b.rol]);
     const cols = sorted.length > 8 ? 2 : 1;

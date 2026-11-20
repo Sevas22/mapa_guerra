@@ -10,6 +10,7 @@ import {
   type History,
   type Snapshot,
 } from '@/domain/history';
+import type { CustomMesh } from '@/domain/models3d';
 import { sampleScenario } from '@/domain/sample';
 import {
   createObject,
@@ -47,7 +48,7 @@ import {
 
 export type Tool =
   | { mode: 'select' }
-  | { mode: 'place'; kind: 'unit'; type: UnitType }
+  | { mode: 'place'; kind: 'unit'; type: UnitType; extra?: ObjectPatch }
   | { mode: 'place'; kind: 'point'; type: PointType; extra?: ObjectPatch }
   | { mode: 'draw'; kind: 'line'; type: LineType; redrawId?: string };
 
@@ -100,6 +101,8 @@ export interface EditorState {
   updatePhase: (patch: Partial<Omit<Phase, 'id'>>) => void;
   setPhaseView: (view: PhaseView | null) => void;
   setScenarioName: (name: string) => void;
+  /** Cuerpo humano realista para las figuras de los perfiles (`undefined` lo quita). */
+  setHumanMesh: (mesh: CustomMesh | undefined) => void;
   setSpeed: (speed: number) => void;
   addPhase: () => void;
   deleteCurrentPhase: () => void;
@@ -234,22 +237,21 @@ export const useEditorStore = create<EditorState>()(
           if (playing) return;
           if (tool.mode === 'place') {
             const frame = { lat: round6(ll.lat), lng: round6(ll.lng) };
-            if (tool.kind === 'unit')
-              addObjectAt({ kind: 'unit', type: tool.type, frame }, faction, current, get().force);
-            else {
-              const extra = tool.extra;
-              batch(() => {
-                const o = addObjectAt(
-                  { kind: 'point', type: tool.type, frame },
-                  faction,
-                  current,
-                  get().force,
-                );
-                if (extra) mutate((s) => patchObject(s, o.id, extra));
-              });
-            }
+            // `extra` completa el objeto recién puesto (modelo 3D, contenido de una ficha...).
+            const extra = tool.extra;
+            batch(() => {
+              const o = addObjectAt(
+                tool.kind === 'unit'
+                  ? { kind: 'unit', type: tool.type, frame }
+                  : { kind: 'point', type: tool.type, frame },
+                faction,
+                current,
+                get().force,
+              );
+              if (extra) mutate((s) => patchObject(s, o.id, extra));
+            });
             // Las fichas se colocan una vez: se vuelve a seleccionar.
-            if (!shiftKey || ('extra' in tool && tool.extra)) get().setTool(SELECT);
+            if (!shiftKey || tool.extra) get().setTool(SELECT);
           } else if (tool.mode === 'draw') {
             const draft: LatLngTuple[] = [...(get().draft ?? []), [ll.lat, ll.lng]];
             set({ draft, draftError: null });
@@ -330,6 +332,13 @@ export const useEditorStore = create<EditorState>()(
         setPhaseView: (view) => get().updatePhase({ view }),
 
         setScenarioName: (name) => mutate((s) => ({ ...s, name }), 'name'),
+
+        setHumanMesh: (mesh) =>
+          mutate((s) => {
+            const next = { ...s, humanMesh: mesh };
+            if (!mesh) delete next.humanMesh;
+            return next;
+          }, 'humanMesh'),
 
         setSpeed: (speed) => mutate((s) => ({ ...s, speed })),
 
