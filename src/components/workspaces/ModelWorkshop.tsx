@@ -20,6 +20,7 @@ import {
   type Payload,
   type TailType,
 } from '@/domain/models3d';
+import { CATALOG_URL, assetModel, parseCatalog, type RealAsset } from '@/domain/realCatalog';
 import { addMeshFile } from '@/lib/mediaStore';
 import { NO_ANIM, meshClipNames } from '@/lib/model3dThree';
 import { selectSelected, useEditorStore } from '@/store/editorStore';
@@ -236,7 +237,23 @@ export default function ModelWorkshop() {
   const model = models.find((m) => m.id === currentId) ?? models[0];
   const [tab, setTab] = useState<ModelDomain>(model ? domainOf(model.base) : 'aire');
 
-  const create = (p: (typeof PRESETS)[number]) => {
+  // Modelos reales del catálogo (`public/models/vehiculos/catalogo.json`).
+  const [real, setReal] = useState<RealAsset[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch(CATALOG_URL, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .catch(() => [])
+      .then((data: unknown) => {
+        if (live) setReal(parseCatalog(data).assets);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  const realHere = (real ?? []).filter((a) => domainOf(a.base) === tab);
+
+  const create = (p: Omit<Model3D, 'id'>) => {
     const m = newModel(p);
     upsert('models', m);
     setCurrentId(m.id);
@@ -300,6 +317,33 @@ export default function ModelWorkshop() {
                 </button>
               ))}
             </div>
+            <h4 className="mb-1 font-mono text-[10px] tracking-wider text-accent uppercase">
+              Modelos reales
+            </h4>
+            {realHere.length ? (
+              <div className="mb-3 grid gap-1">
+                {realHere.map((a) => (
+                  <button
+                    key={a.file}
+                    type="button"
+                    title={`${a.author ? `Por ${a.author} · ` : ''}${a.license}`}
+                    className="btn justify-start! border-accent/50! text-left text-[13px]!"
+                    onClick={() => create(assetModel(a))}
+                  >
+                    + {a.name}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="note mb-3">
+                {real == null
+                  ? 'Cargando…'
+                  : 'Aún no hay modelos reales de este tipo. Se agregan en public/models/vehiculos (ver la guía).'}
+              </p>
+            )}
+            <h4 className="mb-1 font-mono text-[10px] tracking-wider text-muted uppercase">
+              Paramétricos
+            </h4>
             <div className="grid gap-1">
               {PRESETS.filter((p) => domainOf(p.base) === tab).map((p) => (
                 <button
@@ -358,6 +402,11 @@ export default function ModelWorkshop() {
                   {def.spanLabel.toLowerCase()} {dec(model.span)} m
                   {model.base === 'soldados' ? ` · ${model.engines} soldados` : ''}
                 </div>
+                {model.mesh?.credit ? (
+                  <div className="mt-1 max-w-[420px] text-[11px] text-soft">
+                    Modelo 3D: {model.mesh.credit}
+                  </div>
+                ) : null}
               </div>
               <div className="absolute bottom-3 left-3 flex gap-2 text-xs text-muted">
                 <button type="button" className="btn text-xs!" onClick={() => setSpin(!spin)}>

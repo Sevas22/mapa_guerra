@@ -178,6 +178,33 @@ estatura, en la infantería) indicado en Medidas; **Frente** lo gira si no mira 
 cada puesto de la formación. El archivo se guarda en el navegador y viaja dentro del JSON al
 exportar.
 
+**Modelos reales.** En la pestaña de cada dominio, **Modelos reales** muestra los vehículos,
+aeronaves, embarcaciones y tropas hechos por artistas que estén en `public/models/vehiculos/`.
+Para agregar uno: descarga el modelo en formato .glb (por ejemplo de Sketchfab, filtrando por
+«Downloadable» y licencia CC Attribution o CC0), cópialo a esa carpeta y agrega una entrada en
+`catalogo.json`:
+
+```json
+[
+  {
+    "file": "humvee.glb",
+    "name": "Vehículo táctico ligero",
+    "base": "vehiculo-ligero",
+    "length": 4.9,
+    "yaw": 90,
+    "author": "Nombre del autor",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/..."
+  }
+]
+```
+
+`base` es el tipo del taller (avion, caza, helicoptero, dron-multirrotor, dron-ala-fija, tanque,
+blindado, camion, camioneta, vehiculo-ligero, artilleria, lancha, buque, submarino, soldados):
+define el símbolo y si vuela, rueda o navega. `length` es el largo real en metros (escala el
+archivo) y `yaw` gira el modelo si no mira hacia adelante. Los créditos se muestran en el taller;
+la licencia CC-BY exige citarlos también en el trabajo.
+
 **Colocar en el mapa** pone una unidad con el símbolo que corresponde (aviación, blindados,
 mecanizada, transportes, artillería, naval, infantería...) y el modelo ya asignado: haz clic en
 el mapa. También se puede elegir el modelo de una unidad existente en **Modelo 3D** del

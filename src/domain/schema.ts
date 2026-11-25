@@ -257,6 +257,7 @@ const MeshSchema = z.object({
   parts: z.array(z.string()).optional().catch(undefined),
   skinRef: z.string().optional().catch(undefined),
   hairRef: z.string().optional().catch(undefined),
+  credit: z.string().optional().catch(undefined),
 });
 
 export const Model3DSchema = z

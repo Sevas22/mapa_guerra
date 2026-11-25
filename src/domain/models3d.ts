@@ -135,6 +135,8 @@ export interface CustomMesh {
   skinRef?: string;
   /** Color medio de la textura del cabello, para teñirla. */
   hairRef?: string;
+  /** Créditos del archivo (autor, licencia y origen), cuando la licencia los exige. */
+  credit?: string;
 }
 
 /** El archivo es un modelo incluido en la app (no un adjunto del usuario). */
