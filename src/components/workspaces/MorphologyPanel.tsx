@@ -21,14 +21,7 @@ import {
   type Morphology,
   type Sex,
 } from '@/domain/morphology';
-import {
-  OUTFIT_PRESETS,
-  builtinHuman,
-  defaultOutfit,
-  personModel,
-  personUnit,
-  type Outfit,
-} from '@/domain/personModel';
+import { builtinHuman, defaultOutfit, personModel, personUnit } from '@/domain/personModel';
 import { profileTitle, type Profile } from '@/domain/profiles';
 import { addMeshFile } from '@/lib/mediaStore';
 import { NO_ANIM } from '@/lib/model3dThree';
@@ -96,20 +89,15 @@ export default function MorphologyPanel({
   const humanIn = useRef<HTMLInputElement>(null);
   const [humanErr, setHumanErr] = useState('');
   const m = profile.fisico ?? newMorphology();
-  const [outfits, setOutfits] = useState<Record<string, Outfit>>({});
-  // Figura: cuerpo humano realista (el propio del escenario o el incluido) o figura simple.
-  const [realistic, setRealistic] = useState(true);
-  const outfit = outfits[profile.id] ?? defaultOutfit(profile.rol);
+  // La figura es siempre un cuerpo humano realista: el propio del escenario o el incluido.
+  const outfit = defaultOutfit(profile.rol);
   const setM = (patch: Partial<Morphology>) => set({ fisico: { ...m, ...patch } });
   const v = bmi(m);
   const b = build(m);
 
   const name = profileTitle(profile);
   const fisico = profile.fisico;
-  const body = useMemo(
-    () => (realistic ? (human ?? builtinHuman(fisico ?? newMorphology())) : undefined),
-    [realistic, human, fisico],
-  );
+  const body = useMemo(() => human ?? builtinHuman(fisico ?? newMorphology()), [human, fisico]);
   const model = useMemo(
     () => personModel(profile, outfit, undefined, body),
     [profile, outfit, body],
@@ -281,24 +269,7 @@ export default function MorphologyPanel({
           <div className="relative h-[330px] overflow-hidden rounded border border-line">
             <ModelViewer model={model} spin />
           </div>
-          <div className="mt-2 grid grid-cols-2 gap-1" role="radiogroup" aria-label="Figura">
-            {[
-              [true, 'Cuerpo realista'],
-              [false, 'Figura simple'],
-            ].map(([v, label]) => (
-              <button
-                key={String(v)}
-                type="button"
-                role="radio"
-                aria-checked={realistic === v}
-                className="rounded border border-line px-2 py-1 text-[12px] text-muted aria-checked:border-accent aria-checked:text-accent"
-                onClick={() => setRealistic(v as boolean)}
-              >
-                {label as string}
-              </button>
-            ))}
-          </div>
-          {realistic ? (
+          {
             <div className="mt-2 rounded border border-line bg-bg px-2.5 py-2 text-[12px]">
               {human ? (
                 <>
@@ -361,28 +332,7 @@ export default function MorphologyPanel({
                 }}
               />
             </div>
-          ) : (
-            <label className="field mt-2">
-              Vestimenta de la figura
-              <select
-                value={OUTFIT_PRESETS.findIndex(
-                  (o) => JSON.stringify(o.outfit) === JSON.stringify(outfit),
-                )}
-                onChange={(e) =>
-                  setOutfits({
-                    ...outfits,
-                    [profile.id]: OUTFIT_PRESETS[Number(e.target.value)]!.outfit,
-                  })
-                }
-              >
-                {OUTFIT_PRESETS.map((o, i) => (
-                  <option key={o.name} value={i}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+          }
           <button type="button" className="btn primary w-full" onClick={place}>
             Crear figura 3D y colocar en el mapa
           </button>

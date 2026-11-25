@@ -135,6 +135,7 @@ export const LineObjectSchema = z.object({
   ...base,
   force: symbolFields.force,
   travel: travelSchema,
+  hideMeasures: z.boolean().optional().catch(undefined),
   kind: z.literal('line'),
   type: z.enum(LINE_TYPES).catch('frente'),
   echelon: z.string().optional(),

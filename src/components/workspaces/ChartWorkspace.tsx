@@ -39,6 +39,7 @@ import {
 import { downloadText, imageToDataUrl } from '@/lib/imageResize';
 import { useEditorStore } from '@/store/editorStore';
 import { useWorkspace } from '@/store/workspaceStore';
+import NetworkView from './NetworkView';
 
 const EMPTY_CHARTS: LinkChart[] = [];
 const EMPTY_PROFILES: Profile[] = [];
@@ -293,6 +294,8 @@ export default function ChartWorkspace() {
   const [mode, setMode] = useState<Mode>({ kind: 'select' });
   const [edgeKind, setEdgeKind] = useState<EdgeKind>('confirmado');
   const [zoom, setZoom] = useState(1);
+  // Diagrama editable o red de teoría de grafos (se construye sola desde el diagrama).
+  const [view, setView] = useState<'diagrama' | 'red'>('diagrama');
   const [frozen, setFrozen] = useState<Bounds | null>(null);
   const [profilePick, setProfilePick] = useState('');
   const host = useRef<HTMLDivElement>(null);
@@ -530,6 +533,27 @@ export default function ChartWorkspace() {
         <h2>
           Grafos de vínculos <span className="text-accent">·</span> {charts.length}
         </h2>
+        {chart ? (
+          <div className="ml-3 flex rounded border border-line p-0.5" role="tablist">
+            {(
+              [
+                ['diagrama', 'Diagrama'],
+                ['red', 'Red (teoría de grafos)'],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={view === v}
+                className="rounded px-3 py-1 text-[13px] text-muted aria-selected:bg-accent aria-selected:text-bg"
+                onClick={() => setView(v)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <span className="flex-1" />
         {chart ? (
           <>
@@ -548,7 +572,9 @@ export default function ChartWorkspace() {
           Volver al mapa
         </button>
       </div>
-      <div className="ws-body grid-cols-[240px_1fr_290px] max-[1000px]:grid-cols-1">
+      <div
+        className={`ws-body ${view === 'red' ? 'grid-cols-[240px_1fr]' : 'grid-cols-[240px_1fr_290px]'} max-[1000px]:grid-cols-1`}
+      >
         <aside className="ws-side border-r border-line">
           <section className="sec">
             <h3 className="sec-h">Grafos</h3>
@@ -660,7 +686,9 @@ export default function ChartWorkspace() {
         </aside>
 
         <main className="relative min-h-[300px] min-w-0">
-          {chart ? (
+          {chart && view === 'red' ? (
+            <NetworkView chart={chart} profiles={profiles} />
+          ) : chart ? (
             <>
               <div
                 ref={host}
@@ -712,82 +740,86 @@ export default function ChartWorkspace() {
           )}
         </main>
 
-        <aside className="ws-side border-l border-line">
-          {chart ? (
-            <>
-              {selNode || selGroup || selEdge ? (
+        {view === 'diagrama' ? (
+          <aside className="ws-side border-l border-line">
+            {chart ? (
+              <>
+                {selNode || selGroup || selEdge ? (
+                  <section className="sec">
+                    <h3 className="sec-h big">
+                      {selNode
+                        ? NODE_DEFS[selNode.kind].name
+                        : selGroup
+                          ? 'Cuadro de estructura'
+                          : 'Vínculo'}
+                    </h3>
+                    {selNode ? (
+                      <NodeEditor n={selNode} profiles={profiles} set={patchNode} />
+                    ) : null}
+                    {selGroup ? <GroupEditor g={selGroup} set={patchGroup} /> : null}
+                    {selEdge ? <EdgeEditor e={selEdge} set={patchEdge} /> : null}
+                    <button
+                      type="button"
+                      className="btn danger mt-2 w-full"
+                      onClick={() => {
+                        if (!sel) return;
+                        save(removeElement(chart, sel));
+                        setSel(null);
+                      }}
+                    >
+                      Eliminar <kbd>Supr</kbd>
+                    </button>
+                  </section>
+                ) : (
+                  <section className="sec">
+                    <p className="note">
+                      Haz clic en un elemento para editarlo. Arrastra para moverlo. Para unir dos
+                      elementos usa «Vincular elementos».
+                    </p>
+                  </section>
+                )}
                 <section className="sec">
-                  <h3 className="sec-h big">
-                    {selNode
-                      ? NODE_DEFS[selNode.kind].name
-                      : selGroup
-                        ? 'Cuadro de estructura'
-                        : 'Vínculo'}
-                  </h3>
-                  {selNode ? <NodeEditor n={selNode} profiles={profiles} set={patchNode} /> : null}
-                  {selGroup ? <GroupEditor g={selGroup} set={patchGroup} /> : null}
-                  {selEdge ? <EdgeEditor e={selEdge} set={patchEdge} /> : null}
+                  <h3 className="sec-h">Grafo</h3>
+                  <label className="field">
+                    Título
+                    <input
+                      type="text"
+                      value={chart.title}
+                      onChange={(e) =>
+                        save({ ...chart, title: e.target.value }, `chart:${chart.id}:title`)
+                      }
+                    />
+                  </label>
+                  <label className="flex items-center gap-1.5 text-[13px]">
+                    <input
+                      type="checkbox"
+                      className="w-auto!"
+                      checked={chart.legend}
+                      onChange={() => save({ ...chart, legend: !chart.legend })}
+                    />
+                    Mostrar convenciones
+                  </label>
+                  <p className="note mt-2">
+                    {chart.nodes.length} elementos · {chart.groups.length} cuadros ·{' '}
+                    {chart.edges.length} vínculos
+                  </p>
                   <button
                     type="button"
                     className="btn danger mt-2 w-full"
                     onClick={() => {
-                      if (!sel) return;
-                      save(removeElement(chart, sel));
+                      if (!confirm(`¿Eliminar el grafo «${chart.title}»?`)) return;
+                      removeItem('charts', chart.id);
+                      setChartId(null);
                       setSel(null);
                     }}
                   >
-                    Eliminar <kbd>Supr</kbd>
+                    Eliminar grafo
                   </button>
                 </section>
-              ) : (
-                <section className="sec">
-                  <p className="note">
-                    Haz clic en un elemento para editarlo. Arrastra para moverlo. Para unir dos
-                    elementos usa «Vincular elementos».
-                  </p>
-                </section>
-              )}
-              <section className="sec">
-                <h3 className="sec-h">Grafo</h3>
-                <label className="field">
-                  Título
-                  <input
-                    type="text"
-                    value={chart.title}
-                    onChange={(e) =>
-                      save({ ...chart, title: e.target.value }, `chart:${chart.id}:title`)
-                    }
-                  />
-                </label>
-                <label className="flex items-center gap-1.5 text-[13px]">
-                  <input
-                    type="checkbox"
-                    className="w-auto!"
-                    checked={chart.legend}
-                    onChange={() => save({ ...chart, legend: !chart.legend })}
-                  />
-                  Mostrar convenciones
-                </label>
-                <p className="note mt-2">
-                  {chart.nodes.length} elementos · {chart.groups.length} cuadros ·{' '}
-                  {chart.edges.length} vínculos
-                </p>
-                <button
-                  type="button"
-                  className="btn danger mt-2 w-full"
-                  onClick={() => {
-                    if (!confirm(`¿Eliminar el grafo «${chart.title}»?`)) return;
-                    removeItem('charts', chart.id);
-                    setChartId(null);
-                    setSel(null);
-                  }}
-                >
-                  Eliminar grafo
-                </button>
-              </section>
-            </>
-          ) : null}
-        </aside>
+              </>
+            ) : null}
+          </aside>
+        ) : null}
       </div>
     </>
   );

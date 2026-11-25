@@ -24,6 +24,15 @@ import {
   travelSpeed,
   travelSummary,
 } from '@/domain/travel';
+import {
+  extentKm,
+  formatArea,
+  formatSide,
+  isAreaType,
+  perimeterKm,
+  polygonAreaKm2,
+  polygonSides,
+} from '@/domain/measure';
 import type {
   Effectiveness,
   FactionId,
@@ -264,6 +273,53 @@ function CardSection({ o }: { o: MapObject }) {
           onChange={(e) => set({ mision: e.target.value || undefined })}
         />
       </label>
+    </section>
+  );
+}
+
+/** Medidas de un área: superficie, perímetro, extensión y longitud de cada lado. */
+function AreaMeasures({ o }: { o: Extract<MapObject, { kind: 'line' }> }) {
+  const current = useEditorStore((s) => s.current);
+  const update = useEditorStore((s) => s.updateObject);
+  if (!isAreaType(o.type)) return null;
+  const pts = frameAt(o, current).pts;
+  if (pts.length < 3) return null;
+  const ext = extentKm(pts);
+  const sides = polygonSides(pts);
+  return (
+    <section className="sec">
+      <h2 className="sec-h">Medidas del área</h2>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[13px]">
+        <dt className="text-muted">Área</dt>
+        <dd className="font-mono text-fg">{formatArea(polygonAreaKm2(pts))}</dd>
+        <dt className="text-muted">Perímetro</dt>
+        <dd className="font-mono text-fg">{formatSide(perimeterKm(pts))}</dd>
+        <dt className="text-muted">Norte-sur</dt>
+        <dd className="font-mono text-fg">{formatSide(ext.ns)}</dd>
+        <dt className="text-muted">Este-oeste</dt>
+        <dd className="font-mono text-fg">{formatSide(ext.ew)}</dd>
+      </dl>
+      <details className="mt-1.5 text-[12px]">
+        <summary className="cursor-pointer text-soft">Lados ({sides.length})</summary>
+        <ol className="mt-1 grid gap-0.5 font-mono text-muted">
+          {sides.map((sd) => (
+            <li key={sd.n}>
+              L{sd.n}: <span className="text-fg">{formatSide(sd.km)}</span> · rumbo{' '}
+              {Math.round(sd.bearing)}°
+            </li>
+          ))}
+        </ol>
+      </details>
+      <label className="mt-1.5 flex items-center gap-2 text-[13px]">
+        <input
+          type="checkbox"
+          className="w-auto!"
+          checked={!o.hideMeasures}
+          onChange={(e) => update(o.id, { hideMeasures: !e.target.checked })}
+        />
+        Mostrar las medidas en el mapa
+      </label>
+      <p className="note mt-1">Medidas sobre la superficie terrestre, en esta fase.</p>
     </section>
   );
 }
@@ -771,6 +827,7 @@ function ObjectInspector({ o }: { o: MapObject }) {
         </div>
         <PositionSection o={o} />
         {o.kind === 'line' ? <TravelSection o={o} /> : null}
+        {o.kind === 'line' ? <AreaMeasures o={o} /> : null}
       </section>
       {o.kind === 'unit' ? <ModelSection o={o} /> : null}
       {o.kind === 'point' && isDoc ? <DocSection o={o} /> : <CardSection o={o} />}

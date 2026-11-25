@@ -325,13 +325,30 @@ function labelLines(n: ChartNode, t: { label: string; sub: string }): string[] {
   return [...wrapText(t.label, max), ...wrapText(t.sub, max)];
 }
 
-export const LEGEND_W = 236;
+export const LEGEND_W = 250;
 
-function legendRows(): number {
-  return EDGE_KINDS.length + 4 + Object.keys(SOURCE_DEFS).length;
+/** Caracteres por línea en la leyenda: los textos más largos se parten en dos líneas. */
+const LEGEND_CHARS = 32;
+const LEGEND_ROW = 22;
+const LEGEND_LINE = 11;
+
+/** Textos de la leyenda, en orden (el ícono de cada uno lo dibuja `renderLegend`). */
+function legendTexts(): string[] {
+  return [
+    ...EDGE_KINDS.map((k) => EDGE_DEFS[k].name),
+    'Integrantes de la amenaza',
+    'Lugares o estructuras',
+    'Personas',
+    'Vehículos o propiedades',
+    ...Object.values(SOURCE_DEFS).map((s) => s.name),
+  ].map((t) => t.toUpperCase());
 }
 
-const legendH = () => 40 + legendRows() * 22;
+/** Alto de una fila de la leyenda según cuántas líneas ocupa su texto. */
+const legendRowH = (text: string) =>
+  LEGEND_ROW + (wrapText(text, LEGEND_CHARS).length - 1) * LEGEND_LINE;
+
+const legendH = () => 40 + legendTexts().reduce((h, t) => h + legendRowH(t), 0);
 
 export interface Bounds {
   x: number;
@@ -525,10 +542,17 @@ function renderLegend(x: number, y: number): string {
   const rows: string[] = [];
   let ry = y + 40;
   const row = (icon: string, text: string) => {
+    const label = text.toUpperCase();
+    const lines = wrapText(label, LEGEND_CHARS);
+    // Varias líneas: el ícono queda centrado respecto al bloque de texto.
+    const iy = ry + ((lines.length - 1) * LEGEND_LINE) / 2;
+    const tspans = lines
+      .map((l, i) => `<tspan x="${x + 44}" y="${ry + 3.5 + i * LEGEND_LINE}">${esc(l)}</tspan>`)
+      .join('');
     rows.push(
-      `<g transform="translate(${x + 22} ${ry})">${icon}</g><text x="${x + 44}" y="${ry + 3.5}" font-size="9" fill="#111">${esc(text.toUpperCase())}</text>`,
+      `<g transform="translate(${x + 22} ${iy})">${icon}</g><text font-size="9" fill="#111">${tspans}</text>`,
     );
-    ry += 22;
+    ry += legendRowH(label);
   };
   for (const k of EDGE_KINDS) {
     const d = EDGE_DEFS[k];

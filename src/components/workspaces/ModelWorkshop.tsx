@@ -317,45 +317,37 @@ export default function ModelWorkshop() {
                 </button>
               ))}
             </div>
-            <h4 className="mb-1 font-mono text-[10px] tracking-wider text-accent uppercase">
-              Modelos reales
-            </h4>
+            {/* Solo modelos reales (hechos por artistas), agrupados por tipo de equipo. */}
             {realHere.length ? (
-              <div className="mb-3 grid gap-1">
-                {realHere.map((a) => (
-                  <button
-                    key={a.file}
-                    type="button"
-                    title={`${a.author ? `Por ${a.author} · ` : ''}${a.license}`}
-                    className="btn justify-start! border-accent/50! text-left text-[13px]!"
-                    onClick={() => create(assetModel(a))}
-                  >
-                    + {a.name}
-                  </button>
-                ))}
-              </div>
+              MODEL_BASES.filter((b) => realHere.some((a) => a.base === b)).map((b) => (
+                <div key={b} className="mb-2">
+                  <h4 className="mb-1 font-mono text-[10px] tracking-wider text-muted uppercase">
+                    {BASE_DEFS[b].name}
+                  </h4>
+                  <div className="grid gap-1">
+                    {realHere
+                      .filter((a) => a.base === b)
+                      .map((a) => (
+                        <button
+                          key={a.file}
+                          type="button"
+                          title={`${a.author ? `Por ${a.author} · ` : ''}${a.license}`}
+                          className="btn justify-start! text-left text-[13px]!"
+                          onClick={() => create(assetModel(a))}
+                        >
+                          + {a.name}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              ))
             ) : (
-              <p className="note mb-3">
+              <p className="note">
                 {real == null
                   ? 'Cargando…'
-                  : 'Aún no hay modelos reales de este tipo. Se agregan en public/models/vehiculos (ver la guía).'}
+                  : 'Aún no hay modelos de este tipo. Se agregan en public/models/vehiculos (ver la guía).'}
               </p>
             )}
-            <h4 className="mb-1 font-mono text-[10px] tracking-wider text-muted uppercase">
-              Paramétricos
-            </h4>
-            <div className="grid gap-1">
-              {PRESETS.filter((p) => domainOf(p.base) === tab).map((p) => (
-                <button
-                  key={p.name}
-                  type="button"
-                  className="btn justify-start! text-left text-[13px]!"
-                  onClick={() => create(p)}
-                >
-                  + {p.name}
-                </button>
-              ))}
-            </div>
           </section>
           <section className="sec">
             <h3 className="sec-h">Modelos del escenario</h3>

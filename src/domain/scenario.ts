@@ -121,6 +121,7 @@ export type ObjectPatch = Partial<
     echelon: string;
     media: MediaRef[];
     travel: Travel;
+    hideMeasures: boolean;
   } & SymbolFields &
     ModelFields &
     DocFields
@@ -156,6 +157,8 @@ export function patchObject(s: Scenario, id: string, patch: ObjectPatch): Scenar
       if ('altitude' in loose && loose.altitude == null) delete loose.altitude;
       if ('chartId' in loose && !loose.chartId) delete loose.chartId;
       if ('cardWidth' in loose && !loose.cardWidth) delete loose.cardWidth;
+      if ('hideMeasures' in next && !(next as { hideMeasures?: boolean }).hideMeasures)
+        delete (next as { hideMeasures?: boolean }).hideMeasures;
       if ('travel' in next && !(next as { travel?: Travel }).travel)
         delete (next as { travel?: Travel }).travel;
       return next;

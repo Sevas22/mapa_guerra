@@ -8,7 +8,7 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { formation } from '@/domain/model3d/people';
 import { bmi, bodyShape } from '@/domain/morphology';
 import { domainOf, modelParts, type Model3D, type Part } from '@/domain/models3d';
-import { humanize, type HumanTraits } from './humanBody';
+import { humanize, relaxArms, type HumanTraits } from './humanBody';
 import { getMedia } from './mediaStore';
 
 const AXIS_ROT: Record<'x' | 'y' | 'z', THREE.Euler> = {
@@ -268,7 +268,13 @@ function placeMesh(m: Model3D, t: MeshTemplate, mixers: THREE.AnimationMixer[]):
   const domain = domainOf(m.base);
   const yaw = (mesh.yaw * Math.PI) / 180;
   // Con morfología, el cuerpo humano se adapta a la persona antes de medirlo.
-  const source = m.body ? humanize(t.scene, yaw, traitsOf(m)) : t.scene;
+  const clip = pickClip(t.clips, mesh.anim);
+  let source = m.body ? humanize(t.scene, yaw, traitsOf(m)) : t.scene;
+  // Figuras humanas sin animación: si vienen en pose T, se les bajan los brazos.
+  if (!m.body && !clip && domain === 'personal') {
+    source = cloneSkinned(t.scene);
+    relaxArms(source);
+  }
   const probe = new THREE.Group();
   // Primero se corrige el eje «arriba» del archivo (X) y después se orienta el frente (Y).
   probe.rotation.set(((mesh.rotX ?? 0) * Math.PI) / 180, yaw, 0, 'YXZ');
@@ -281,7 +287,6 @@ function placeMesh(m: Model3D, t: MeshTemplate, mixers: THREE.AnimationMixer[]):
   const cx = (b.min.x + b.max.x) / 2;
   const cz = (b.min.z + b.max.z) / 2;
   const cy = domain === 'aire' ? (b.min.y + b.max.y) / 2 : b.min.y;
-  const clip = pickClip(t.clips, mesh.anim);
 
   const slots: [number, number][] =
     domain === 'personal' ? formation(m.variant, m.engines, m.span) : [[0, 0]];

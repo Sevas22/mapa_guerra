@@ -9,6 +9,7 @@ import { FACTIONS, LINES } from './catalog';
 import { esc, lineStyle } from './symbols';
 import { isTaskType, taskGeometry } from './tasks';
 import { objectStateAt } from './timeline';
+import { areaSummary, formatSide, isAreaType, polygonSides } from './measure';
 import { hasTravel, pathKm, travelSummary } from './travel';
 import type { LatLngTuple, LineObject, MapObject } from './types';
 
@@ -98,7 +99,7 @@ export interface SceneLabel {
   opacity: number;
   html: string;
   /** Clase del contenedor: `gl-tip` para etiquetas de trazos, `task-lbl` para tareas. */
-  className: 'gl-tip' | 'task-lbl';
+  className: 'gl-tip' | 'task-lbl' | 'seg-lbl';
   color?: string;
 }
 
@@ -272,10 +273,23 @@ function addLine(
   }
 
   const travel = hasTravel(o.type) ? o.travel : undefined;
-  if (!o.label && !area && !travel) return;
+  const measures = isAreaType(o.type) && !o.hideMeasures && pts.length >= 3;
+  // Longitud de cada lado de un área, en el punto medio del lado.
+  if (measures)
+    for (const sd of polygonSides(pts))
+      labels.push({
+        key: `${o.id}:side${sd.n}`,
+        id: o.id,
+        lat: sd.mid[0],
+        lng: sd.mid[1],
+        opacity,
+        className: 'seg-lbl',
+        html: `<span>${formatSide(sd.km)}</span>`,
+      });
+  if (!o.label && !area && !travel && !measures) return;
   const at = labelAnchor(pts, closed);
   if (!at) return;
-  const summary = travel ? travelSummary(pts, travel) : '';
+  const summary = travel ? travelSummary(pts, travel) : measures ? areaSummary(pts) : '';
   labels.push({
     key: `${o.id}:lbl`,
     id: o.id,

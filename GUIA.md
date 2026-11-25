@@ -59,7 +59,11 @@ antes lo que quieras conservar.
   - Instalaciones y lugares: bases, aeropuerto, antena, lugar.
 - **Trazos**: línea de frente, eje de avance y ruta. Solo la ruta y el eje calculan distancia y
   tiempo.
-- **Áreas**: zona, AO, ANI y ABI.
+- **Áreas**: zona, AO, ANI y ABI. Al demarcarlas se ve en vivo, junto al cursor, el tramo que se está
+  trazando, el perímetro y el área. Ya dibujadas, el mapa (2D y 3D) rotula el área (m², ha o
+  km²) y el perímetro en su etiqueta y la longitud de cada lado en el borde; el inspector
+  muestra además la extensión norte-sur y este-oeste y el rumbo de cada lado, y permite ocultar
+  las medidas. Se calculan sobre la superficie terrestre.
 - **Tareas tácticas**: las 43 del capítulo 9 del manual. Cada una se dibuja con dos clics (desde
   la unidad hacia el objetivo; en las circulares, centro y borde).
 
@@ -251,6 +255,20 @@ cambia en el panel. Arrastra para mover (un cuadro mueve lo que tiene dentro) y 
 naranja para cambiar su tamaño; Supr borra. Incluye el cuadro de **convenciones**. Se exporta
 en PNG o SVG y **Colocar en el mapa** lo pone como ficha. **Ejemplo ficticio** carga una red
 inventada para ver la estructura.
+
+**Red (teoría de grafos).** La pestaña **Red** convierte el diagrama, mientras lo armas, en una
+red al estilo de Gephi: cada elemento es un nodo, cada cuadro de estructura es un nodo unido a
+quienes contiene y cada vínculo pesa más si está confirmado. La red se acomoda sola por fuerzas
+(tipo ForceAtlas2) cada vez que cambias el diagrama; el tamaño de los nodos sigue la métrica
+elegida —**grado** (más conectados), **intermediación** (intermediarios y puentes),
+**cercanía** (alcance) o **vector propio** (conectados con los importantes)— y el color, la
+**comunidad** detectada por modularidad (método de Louvain) o el tipo. Se resaltan los
+**puntos de corte** (actores cuya neutralización divide la red) y los **vínculos puente**
+entre comunidades. El panel muestra el resumen (densidad, grado medio, comunidades y
+modularidad, componentes), el ranking de **actores clave** y la composición de cada
+comunidad. Arrastra un nodo para ubicarlo, el fondo para moverte y la rueda para acercar;
+**Reorganizar** vuelve a distribuirla. **Exportar GEXF (Gephi)** guarda la red con métricas,
+colores y posiciones para seguir el análisis en Gephi.
 
 ## 5. Línea de tiempo (abajo)
 

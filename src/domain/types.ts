@@ -159,6 +159,8 @@ export interface LineObject extends BaseObject {
   force?: string;
   /** Medio de desplazamiento, para calcular distancia y tiempo. */
   travel?: Travel;
+  /** Áreas: no rotular área, perímetro ni lados en el mapa (por defecto se rotulan). */
+  hideMeasures?: boolean;
   type: LineType;
   echelon?: string;
   frames: Frames<LineFrame>;
