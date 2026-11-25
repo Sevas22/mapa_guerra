@@ -30,6 +30,7 @@ import {
 } from '@/domain/linkChart';
 import { sampleLinkChart } from '@/domain/linkChartSample';
 import { sampleNetworkChart } from '@/domain/networkSample';
+import { isPersonNode, nodesWithoutProfile, syncChartProfiles } from '@/domain/profileLinks';
 import {
   SOURCE_DEFS,
   SOURCE_TYPES,
@@ -40,6 +41,7 @@ import {
 import { downloadText, imageToDataUrl } from '@/lib/imageResize';
 import { useEditorStore } from '@/store/editorStore';
 import { useWorkspace } from '@/store/workspaceStore';
+import { IntelTabs } from './IntelTabs';
 import NetworkView from './NetworkView';
 
 const EMPTY_CHARTS: LinkChart[] = [];
@@ -113,15 +115,31 @@ function NodeEditor({
   n,
   profiles,
   set,
+  onMakeProfile,
 }: {
   n: ChartNode;
   profiles: Profile[];
   set: (patch: Partial<ChartNode>) => void;
+  onMakeProfile: () => void;
 }) {
   const photoIn = useRef<HTMLInputElement>(null);
+  const show = useWorkspace((s) => s.show);
   const p = profiles.find((x) => x.id === n.profileId);
   return (
     <>
+      {p ? (
+        <button
+          type="button"
+          className="btn primary mb-2 w-full"
+          onClick={() => show('profiles', p.id)}
+        >
+          Abrir ficha de {profileTitle(p)}
+        </button>
+      ) : isPersonNode(n) ? (
+        <button type="button" className="btn primary mb-2 w-full" onClick={onMakeProfile}>
+          Crear ficha con este nodo
+        </button>
+      ) : null}
       <label className="field">
         Tipo
         <select value={n.kind} onChange={(e) => set({ kind: e.target.value as NodeKind })}>
@@ -148,7 +166,7 @@ function NodeEditor({
         </label>
       ) : null}
       <label className="field">
-        Perfil vinculado
+        Ficha vinculada
         <select
           value={n.profileId ?? ''}
           onChange={(e) => set({ profileId: e.target.value || undefined })}
@@ -289,9 +307,10 @@ export default function ChartWorkspace() {
   const addProfiles = useEditorStore((s) => s.addProfiles);
   const setTool = useEditorStore((s) => s.setTool);
   const focusId = useWorkspace((s) => s.focusId);
+  const focusNode = useWorkspace((s) => s.focusNode);
   const close = useWorkspace((s) => s.close);
   const [chartId, setChartId] = useState<string | null>(focusId ?? charts[0]?.id ?? null);
-  const [sel, setSel] = useState<string | null>(null);
+  const [sel, setSel] = useState<string | null>(focusNode);
   const [mode, setMode] = useState<Mode>({ kind: 'select' });
   const [edgeKind, setEdgeKind] = useState<EdgeKind>('confirmado');
   const [zoom, setZoom] = useState(1);
@@ -321,10 +340,16 @@ export default function ChartWorkspace() {
     });
   }, [chart, pmap, sel, mode, bounds, zoom]);
 
-  // Centrar el lienzo al abrir otro grafo.
+  // Centrar el lienzo al abrir otro grafo (en el nodo pedido, si se llegó desde una ficha).
   useEffect(() => {
     const el = host.current;
     if (!el) return;
+    const n = sel ? chart?.nodes.find((x) => x.id === sel) : undefined;
+    if (n && bounds) {
+      el.scrollLeft = (n.x - bounds.x) * zoom - el.clientWidth / 2;
+      el.scrollTop = (n.y - bounds.y) * zoom - el.clientHeight / 2;
+      return;
+    }
     el.scrollLeft = (CANVAS_PAD - 20) * zoom;
     el.scrollTop = (CANVAS_PAD - 20) * zoom;
     // Solo al cambiar de grafo.
@@ -394,6 +419,16 @@ export default function ChartWorkspace() {
     );
     save({ ...chart, nodes: [...chart.nodes, ...nodes] });
   };
+
+  /** Crea fichas para las personas del grafo que no tienen (todas o una). */
+  const makeProfiles = (only?: string) => {
+    if (!chart) return;
+    const r = syncChartProfiles(chart, pmap, only);
+    if (!r.created.length) return;
+    addProfiles(r.created);
+    save(r.chart);
+  };
+  const missing = chart ? nodesWithoutProfile(chart, pmap).length : 0;
 
   const addGroup = () => {
     if (!chart) return;
@@ -540,9 +575,7 @@ export default function ChartWorkspace() {
   return (
     <>
       <div className="ws-h max-[900px]:flex-wrap">
-        <h2>
-          Grafos de vínculos <span className="text-accent">·</span> {charts.length}
-        </h2>
+        <IntelTabs current="charts" profileFocus={selNode?.profileId ?? null} />
         {chart ? (
           <div className="ml-3 flex rounded border border-line p-0.5" role="tablist">
             {(
@@ -636,7 +669,7 @@ export default function ChartWorkspace() {
                   </button>
                 </div>
                 <label className="field mt-2">
-                  Desde un perfil
+                  Desde una ficha
                   <select value={profilePick} onChange={(e) => addFromProfile(e.target.value)}>
                     <option value="">
                       {profiles.length ? 'Elegir perfil…' : 'No hay perfiles'}
@@ -654,7 +687,18 @@ export default function ChartWorkspace() {
                   disabled={!profiles.length}
                   onClick={addAllProfiles}
                 >
-                  Agregar todos los perfiles que faltan
+                  Agregar todas las fichas que faltan
+                </button>
+                <button
+                  type="button"
+                  className="btn mt-1.5 w-full text-xs!"
+                  disabled={!missing}
+                  title="Cada persona dibujada sin ficha pasa a tener la suya en «Fichas»"
+                  onClick={() => makeProfiles()}
+                >
+                  {missing
+                    ? `Crear fichas de ${missing} persona${missing > 1 ? 's' : ''} sin ficha`
+                    : 'Todas las personas tienen ficha'}
                 </button>
               </section>
               <section className="sec">
@@ -767,7 +811,12 @@ export default function ChartWorkspace() {
                           : 'Vínculo'}
                     </h3>
                     {selNode ? (
-                      <NodeEditor n={selNode} profiles={profiles} set={patchNode} />
+                      <NodeEditor
+                        n={selNode}
+                        profiles={profiles}
+                        set={patchNode}
+                        onMakeProfile={() => makeProfiles(selNode.id)}
+                      />
                     ) : null}
                     {selGroup ? <GroupEditor g={selGroup} set={patchGroup} /> : null}
                     {selEdge ? <EdgeEditor e={selEdge} set={patchEdge} /> : null}

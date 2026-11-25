@@ -219,7 +219,19 @@ orientados según su recorrido. La altura de vuelo se puede cambiar por fase (**
 que se lean a cualquier zoom y sube el símbolo de los que están en el suelo por encima del
 modelo; **tamaño real** los muestra a escala. El ejemplo *Colibrí* trae el helicóptero.
 
-**Perfiles de operación.** Una ficha por persona relacionada con la operación: rol (propio,
+**Perfiles y vínculos.** Un solo botón abre las fichas de las personas y sus grafos, en dos
+pestañas que trabajan sobre las mismas personas: **Fichas** y **Grafos y red**. Al cambiar de
+pestaña se lleva el foco: desde una ficha se abre el grafo donde aparece, con su nodo
+seleccionado, y desde un nodo del grafo se abre su ficha. Cada ficha muestra **Vínculos en los
+grafos**: en qué grafo aparece, con quién está unida (confirmado, por confirmar, fuente) y qué
+estructuras integra; un clic en un vínculo abre la ficha de esa persona, **Ver en el grafo** lo
+muestra en el diagrama y **Agregar a un grafo** la pone en otro. En la lista, ◆ indica en
+cuántos grafos aparece cada ficha. En el grafo, **Crear ficha con este nodo** (o **Crear
+fichas de N personas sin ficha**, para todas) convierte lo dibujado en fichas: el rótulo
+«a. Alias» pasa a alias, la segunda línea a cargo, el cuadro que la contiene a estructura y la
+foto a la ficha.
+
+**Fichas.** Una ficha por persona relacionada con la operación: rol (propio,
 integrante de la amenaza, persona de interés o fuente con su tipo), nombre, alias, grado, cargo,
 organización, estructura, ubicación, contacto, foto y notas. **Cargar planilla…** lee un CSV
 (o JSON); **Descargar plantilla** da un CSV de ejemplo con las columnas. Marca varios perfiles y
@@ -246,7 +258,7 @@ sin arma). **Usar un cuerpo propio (.glb)** reemplaza el cuerpo incluido por otr
 de MakeHuman exportado desde Blender); si trae formas de mezcla de peso, delgadez, músculo o sexo,
 se usan esas.
 
-**Grafos de vínculos.** Lámina de análisis de redes: integrantes de la amenaza (rombos),
+**Grafos y red.** Lámina de análisis de redes: integrantes de la amenaza (rombos),
 personas, fuentes (anillo de color según el tipo), propios, lugares y vehículos o propiedades
 (triángulo, admite foto), dentro de **cuadros de estructura** con pestaña (mando y control,
 finanzas, logística…). **Vincular elementos**: clic en el origen y en el destino; el tipo de

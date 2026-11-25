@@ -16,8 +16,8 @@ export function Workspaces() {
   if (!open) return null;
   const label = {
     models: 'Taller 3D',
-    profiles: 'Perfiles de operación',
-    charts: 'Grafos de vínculos',
+    profiles: 'Perfiles y vínculos · fichas',
+    charts: 'Perfiles y vínculos · grafos',
   }[open];
   return (
     <div className="ws" role="dialog" aria-modal="true" aria-label={label}>

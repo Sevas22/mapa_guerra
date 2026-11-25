@@ -85,15 +85,9 @@ const WORKSPACES: { id: WorkspaceId; name: string; desc: string; icon: string }[
   },
   {
     id: 'profiles',
-    name: 'Perfiles de operación',
-    desc: 'Fichas de las personas relacionadas con la operación',
-    icon: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-2 2-3 3.5-3s2.9 1 3.5 3M14 9h4M14 13h4"/></svg>',
-  },
-  {
-    id: 'charts',
-    name: 'Grafos de vínculos',
-    desc: 'Redes de la amenaza, estructuras, fuentes y convenciones',
-    icon: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l4 4-4 4-4-4z" fill="currentColor" fill-opacity=".35"/><rect x="2.5" y="15" width="7" height="6"/><circle cx="18" cy="18" r="3"/><path d="M12 11v2H6v2M12 13h6v2"/></svg>',
+    name: 'Perfiles y vínculos',
+    desc: 'Fichas de las personas y sus grafos de vínculos y red',
+    icon: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3" width="10" height="12" rx="1.5"/><circle cx="7.5" cy="8" r="2"/><path d="M4.5 13c.5-1.5 1.6-2.2 3-2.2s2.5.7 3 2.2"/><circle cx="19" cy="6" r="2.2" fill="currentColor" fill-opacity=".35"/><circle cx="18" cy="18" r="2.6"/><path d="M12.5 8.5l4.3-2M12.5 12l3.6 4.2M19 8.2v7.2"/></svg>',
   },
 ];
 

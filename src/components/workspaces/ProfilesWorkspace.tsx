@@ -2,6 +2,8 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { profileCardSpec } from '@/domain/docCards';
+import { chartBounds, nodeForProfile, profileMap, type LinkChart } from '@/domain/linkChart';
+import { chartCountByProfile, profileAppearances } from '@/domain/profileLinks';
 import {
   CSV_TEMPLATE,
   PROFILE_ROLES,
@@ -22,9 +24,11 @@ import type { PointObject } from '@/domain/types';
 import { downloadText, imageToDataUrl } from '@/lib/imageResize';
 import { useEditorStore } from '@/store/editorStore';
 import { useWorkspace } from '@/store/workspaceStore';
+import { IntelTabs } from './IntelTabs';
 import MorphologyPanel from './MorphologyPanel';
 
 const EMPTY: Profile[] = [];
+const EMPTY_CHARTS: LinkChart[] = [];
 
 const TEXT_FIELDS: [keyof Profile, string, string][] = [
   ['nombre', 'Nombre completo', ''],
@@ -69,6 +73,8 @@ export default function ProfilesWorkspace() {
   const setTool = useEditorStore((s) => s.setTool);
   const focusId = useWorkspace((s) => s.focusId);
   const close = useWorkspace((s) => s.close);
+  const show = useWorkspace((s) => s.show);
+  const charts = useEditorStore((s) => s.scenario.charts ?? EMPTY_CHARTS);
   const [currentId, setCurrentId] = useState<string | null>(focusId ?? profiles[0]?.id ?? null);
   const [checked, setChecked] = useState<string[]>([]);
   const [query, setQuery] = useState('');
@@ -77,6 +83,22 @@ export default function ProfilesWorkspace() {
   const csvIn = useRef<HTMLInputElement>(null);
   const photoIn = useRef<HTMLInputElement>(null);
   const p = profiles.find((x) => x.id === currentId);
+  const pmap = useMemo(() => profileMap(profiles), [profiles]);
+  const inCharts = useMemo(() => chartCountByProfile(charts), [charts]);
+  const appear = useMemo(
+    () => (p ? profileAppearances(p.id, charts, pmap) : []),
+    [p, charts, pmap],
+  );
+
+  /** Pone la ficha en un grafo (a la derecha de lo dibujado) y lo abre con el nodo elegido. */
+  const addToChart = (chartId: string) => {
+    const c = charts.find((x) => x.id === chartId);
+    if (!c || !p) return;
+    const b = chartBounds(c, pmap);
+    const n = nodeForProfile(p, Math.round(b.x + b.w + 80), Math.round(b.y + b.h / 2));
+    upsert('charts', { ...c, nodes: [...c.nodes, n] });
+    show('charts', c.id, n.id);
+  };
 
   const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const list = useMemo(() => {
@@ -163,9 +185,11 @@ export default function ProfilesWorkspace() {
   return (
     <>
       <div className="ws-h max-[900px]:flex-wrap">
-        <h2>
-          Perfiles de operación <span className="text-accent">·</span> {profiles.length}
-        </h2>
+        <IntelTabs
+          current="profiles"
+          profileFocus={currentId}
+          chartFocus={appear[0] ? { chartId: appear[0].chartId, nodeId: appear[0].nodeId } : null}
+        />
         <span className="flex-1" />
         <button type="button" className="btn" onClick={() => csvIn.current?.click()}>
           Cargar planilla…
@@ -278,7 +302,7 @@ export default function ProfilesWorkspace() {
                       ?
                     </span>
                   )}
-                  <span className="min-w-0">
+                  <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13px]">{profileTitle(x)}</span>
                     <span className="flex items-center gap-1 truncate text-[11px] text-muted">
                       <i
@@ -291,6 +315,14 @@ export default function ProfilesWorkspace() {
                         }}
                       />
                       {x.cargo || ROLE_DEFS[x.rol].name}
+                      {inCharts.get(x.id) ? (
+                        <span
+                          className="ml-auto flex-none text-accent"
+                          title="Grafos donde aparece"
+                        >
+                          ◆ {inCharts.get(x.id)}
+                        </span>
+                      ) : null}
                     </span>
                   </span>
                 </button>
@@ -408,6 +440,79 @@ export default function ProfilesWorkspace() {
                   onChange={(e) => set({ notas: e.target.value })}
                 />
               </label>
+              <section className="mt-3 rounded border border-line p-3">
+                <h3 className="sec-h">Vínculos en los grafos</h3>
+                {appear.length ? (
+                  <ul className="grid gap-2">
+                    {appear.map((a) => (
+                      <li key={a.chartId + a.nodeId} className="rounded bg-bg p-2">
+                        <div className="flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">
+                            {a.chartTitle}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn px-2! py-0.5! text-xs!"
+                            onClick={() => show('charts', a.chartId, a.nodeId)}
+                          >
+                            Ver en el grafo
+                          </button>
+                        </div>
+                        {a.links.length ? (
+                          <ul className="mt-1.5 flex flex-wrap gap-1">
+                            {a.links.map((l) => (
+                              <li key={l.id}>
+                                <button
+                                  type="button"
+                                  disabled={!l.profileId}
+                                  title={
+                                    l.profileId
+                                      ? 'Abrir su ficha'
+                                      : 'Sin ficha (está solo en el grafo)'
+                                  }
+                                  className="rounded border border-line px-1.5 py-0.5 text-left text-[11px] enabled:hover:border-accent"
+                                  onClick={() => l.profileId && setCurrentId(l.profileId)}
+                                >
+                                  {l.label}
+                                  <span className="ml-1 text-muted">· {l.kind}</span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="note mt-1">Aún sin vínculos en este grafo.</p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="note">Esta persona todavía no aparece en ningún grafo.</p>
+                )}
+                {charts.some((c) => !appear.some((a) => a.chartId === c.id)) ? (
+                  <label className="field mt-2">
+                    Agregar a un grafo
+                    <select value="" onChange={(e) => addToChart(e.target.value)}>
+                      <option value="">Elegir grafo…</option>
+                      {charts
+                        .filter((c) => !appear.some((a) => a.chartId === c.id))
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.title || 'Sin título'}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                ) : null}
+                {!charts.length ? (
+                  <button
+                    type="button"
+                    className="btn mt-2 text-xs!"
+                    onClick={() => show('charts')}
+                  >
+                    Crear un grafo de vínculos
+                  </button>
+                ) : null}
+              </section>
               <MorphologyPanel profile={p} set={set} />
               <div className="mt-3 flex gap-2">
                 <button type="button" className="btn" onClick={() => place([p.id])}>
