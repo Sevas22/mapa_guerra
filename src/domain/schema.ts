@@ -253,6 +253,7 @@ const MeshSchema = z.object({
   id: z.string().min(1),
   name: str,
   yaw: num.catch(0).default(0),
+  rotX: num.optional().catch(undefined),
   anim: str,
   parts: z.array(z.string()).optional().catch(undefined),
   skinRef: z.string().optional().catch(undefined),

@@ -270,7 +270,8 @@ function placeMesh(m: Model3D, t: MeshTemplate, mixers: THREE.AnimationMixer[]):
   // Con morfología, el cuerpo humano se adapta a la persona antes de medirlo.
   const source = m.body ? humanize(t.scene, yaw, traitsOf(m)) : t.scene;
   const probe = new THREE.Group();
-  probe.rotation.y = yaw;
+  // Primero se corrige el eje «arriba» del archivo (X) y después se orienta el frente (Y).
+  probe.rotation.set(((mesh.rotX ?? 0) * Math.PI) / 180, yaw, 0, 'YXZ');
   probe.add(cloneSkinned(source));
   probe.updateMatrixWorld(true);
   const b = new THREE.Box3().setFromObject(probe, true);
@@ -288,7 +289,7 @@ function placeMesh(m: Model3D, t: MeshTemplate, mixers: THREE.AnimationMixer[]):
   slots.forEach(([x, z], i) => {
     const inner = i === 0 ? probe : new THREE.Group();
     if (i > 0) {
-      inner.rotation.y = probe.rotation.y;
+      inner.rotation.copy(probe.rotation);
       inner.add(cloneSkinned(source));
     }
     const holder = new THREE.Group();

@@ -413,7 +413,8 @@ export default function ModelWorkshop() {
                   {spin ? 'Pausar animación' : 'Animar'}
                 </button>
                 <span className="self-center">
-                  Arrastra para girar · rueda para acercar · clic derecho para desplazar
+                  Flecha amarilla: frente · arrastra para girar · rueda para acercar · clic derecho
+                  para desplazar
                 </span>
               </div>
             </>

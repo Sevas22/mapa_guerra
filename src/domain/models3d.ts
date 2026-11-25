@@ -127,6 +127,8 @@ export interface CustomMesh {
   name: string;
   /** Giro, en grados, para que el frente del archivo mire hacia la nariz o proa (+x). */
   yaw: number;
+  /** Giro previo sobre X, en grados (p. ej. -90 para archivos con «arriba» en z). */
+  rotX?: number;
   /** Animación que se reproduce (vacía = la primera de caminar o reposo, si hay). */
   anim: string;
   /** Piezas que se suman al modelo, en su mismo sistema de coordenadas (cabello, barba…). */

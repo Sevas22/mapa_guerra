@@ -23,6 +23,8 @@ export interface RealAsset {
   span?: number;
   /** Giro en grados para que el frente mire hacia adelante (los .glb suelen mirar a +z: 90). */
   yaw: number;
+  /** Giro previo sobre X en grados, para archivos que no tienen «arriba» en y (p. ej. -90). */
+  rotX?: number;
   /** Autor del modelo. */
   author: string;
   /** Licencia (p. ej. «CC-BY-4.0», «CC0»). */
@@ -38,6 +40,7 @@ const AssetSchema = z.object({
   length: z.number().positive(),
   span: z.number().positive().optional(),
   yaw: z.number().finite().catch(90).default(90),
+  rotX: z.number().finite().optional(),
   author: z.string().catch('').default(''),
   license: z.string().catch('').default(''),
   url: z.string().catch('').default(''),
@@ -78,6 +81,7 @@ export function assetModel(a: RealAsset): Omit<Model3D, 'id'> {
       id: REAL_DIR + a.file,
       name: a.file,
       yaw: a.yaw,
+      ...(a.rotX ? { rotX: a.rotX } : {}),
       anim: '',
       credit: assetCredit(a),
     },

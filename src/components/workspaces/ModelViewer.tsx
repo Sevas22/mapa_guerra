@@ -75,7 +75,17 @@ export function ModelViewer({ model, spin }: { model: Model3D; spin: boolean }) 
     water.receiveShadow = true;
     scene.add(water);
     ctx.current = { scene, camera, controls, inst: null, spin: true };
-    scene.userData = { sun, ground, grid, water };
+    // Flecha en el suelo que marca el frente (+x): sirve para ajustar «Frente» de un .glb.
+    const front = new THREE.ArrowHelper(
+      new THREE.Vector3(1, 0, 0),
+      new THREE.Vector3(0, 0.01, 0),
+      1,
+      '#e0b54a',
+      0.18,
+      0.1,
+    );
+    scene.add(front);
+    scene.userData = { sun, ground, grid, water, front };
 
     const resize = () => {
       const w = el.clientWidth;
@@ -121,7 +131,8 @@ export function ModelViewer({ model, spin }: { model: Model3D; spin: boolean }) 
     }
     const size = modelSize(model);
     const domain = domainOf(model.base);
-    const { sun, ground, grid, water } = c.scene.userData as {
+    const { sun, ground, grid, water, front } = c.scene.userData as {
+      front: THREE.ArrowHelper;
       sun: THREE.DirectionalLight;
       ground: THREE.Mesh;
       grid: THREE.GridHelper;
@@ -153,6 +164,8 @@ export function ModelViewer({ model, spin }: { model: Model3D; spin: boolean }) 
     water.visible = domain === 'mar';
     ground.scale.setScalar(size * 2);
     water.scale.setScalar(size * 2.4);
+    front.setLength(size * 0.85, size * 0.12, size * 0.07);
+    front.position.y = domain === 'mar' ? 0.02 * size : 0.005 * size;
     grid.scale.setScalar(size * 1.6);
     sun.position.set(size * 1.2, size * 2, size * 0.8);
     const cam = sun.shadow.camera;

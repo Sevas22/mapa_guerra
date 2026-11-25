@@ -1,1 +1,102 @@
-[]
+[
+  {
+    "file": "tanque-abrams.glb",
+    "name": "M1A2 Abrams",
+    "base": "tanque",
+    "length": 9.77,
+    "span": 3.66,
+    "yaw": 90,
+    "author": "Muhamad Mirza Arrafi",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/general-dynamics-m1a2-abrams-main-battle-tank-10a16c96ca8b4ebc855915f5d5202046"
+  },
+  {
+    "file": "blindado-lav6.glb",
+    "name": "LAV 6 (8×8)",
+    "base": "blindado",
+    "length": 7.0,
+    "span": 2.7,
+    "yaw": 0,
+    "author": "42manako",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/lav-6-945ebecf45cf4ee0ba9215e81dea679b"
+  },
+  {
+    "file": "ligero-hmmwv.glb",
+    "name": "HMMWV (Humvee)",
+    "base": "vehiculo-ligero",
+    "length": 4.9,
+    "span": 2.2,
+    "yaw": 90,
+    "author": "Muhamad Mirza Arrafi",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/hmmwv-shelter-humvee-bdf3dea0dd254d6280e4ac0d29719115"
+  },
+  {
+    "file": "camion-ural.glb",
+    "name": "Camión Ural 4320",
+    "base": "camion",
+    "length": 7.37,
+    "span": 2.5,
+    "yaw": 90,
+    "author": "Brout (davidbroutian)",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/ural-4320-f953c51a5dbc4a15949f4dcc0905c4e8"
+  },
+  {
+    "file": "helicoptero-uh60.glb",
+    "name": "UH-60M Black Hawk",
+    "base": "helicoptero",
+    "length": 19.76,
+    "span": 16.36,
+    "yaw": 90,
+    "author": "Muhamad Mirza Arrafi",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/sikorsky-uh-60m-blackhawk-12b4e525676a49678ac3006b360c8750"
+  },
+  {
+    "file": "avion-c130.glb",
+    "name": "C-130 Hercules",
+    "base": "avion",
+    "length": 29.8,
+    "span": 40.4,
+    "yaw": 180,
+    "author": "helijah",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/lockheed-ac-130-hercules-361991c9874d4680931b3e0d23500e43"
+  },
+  {
+    "file": "caza-f16.glb",
+    "name": "F-16D Block 60",
+    "base": "caza",
+    "length": 15.03,
+    "span": 9.96,
+    "yaw": -90,
+    "author": "Muhamad Mirza Arrafi",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/general-dynamics-f-16d-block-60-ea8edb08d79e4eafa9c794c581f88cf3"
+  },
+  {
+    "file": "dron-mq9.glb",
+    "name": "MQ-9 Reaper",
+    "base": "dron-ala-fija",
+    "length": 11.0,
+    "span": 20.1,
+    "yaw": 90,
+    "rotX": -90,
+    "author": "IProZenoN",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/mq-9-fabe963feb354c5584b51f9c470c3f7e"
+  },
+  {
+    "file": "lancha-pbr.glb",
+    "name": "Lancha patrullera PBR Mk II",
+    "base": "lancha",
+    "length": 9.5,
+    "span": 3.5,
+    "yaw": 180,
+    "author": "Savy (SavyTheCreator)",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/patrol-boat-pbr-mk2-dbd87172b2934063aa93ffd0c6f85750"
+  }
+]
