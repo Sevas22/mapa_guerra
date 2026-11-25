@@ -62,7 +62,6 @@ export function GotoCoords() {
 
   return (
     <section className="sec">
-      <h2 className="sec-h">Ir a coordenadas</h2>
       <input
         type="text"
         className="font-mono text-xs"

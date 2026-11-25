@@ -140,7 +140,7 @@ function Controls3D({
   const exaggeration = useMapStyleStore((s) => s.exaggeration);
   const setExaggeration = useMapStyleStore((s) => s.setExaggeration);
   return (
-    <div className="absolute bottom-[34px] left-2.5 z-[450] flex max-w-[calc(100%-20px)] flex-col gap-1.5 rounded border border-line bg-[rgba(16,22,31,.9)] px-2.5 py-2 text-[12px] text-soft">
+    <div className="absolute bottom-[34px] left-2.5 z-[450] flex max-w-[calc(100%-20px)] flex-col gap-1.5 rounded border border-line bg-[rgba(18,23,19,.9)] px-2.5 py-2 text-[12px] text-soft">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="font-mono text-[11px] tracking-wider text-muted uppercase">Relieve</span>
         {EXAGGERATIONS.map((x) => (

@@ -7,6 +7,7 @@ import { exportScenario, readScenarioFile } from '@/lib/file';
 import { fitScenario, flyToView, resetView } from '@/lib/mapBridge';
 import { storeEmbeddedMedia, withEmbeddedMedia } from '@/lib/mediaStore';
 import { useEditorStore } from '@/store/editorStore';
+import { useWorkspace } from '@/store/workspaceStore';
 
 const CONFIRM = '¿Reemplazar el escenario actual? Exporta antes el actual si quieres conservarlo.';
 
@@ -24,6 +25,7 @@ export function Header() {
   const canRedo = useEditorStore((s) => s.history.future.length > 0 && !s.draft);
   const fileIn = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const show = useWorkspace((s) => s.show);
 
   const onNew = () => {
     if (!confirm(CONFIRM)) return;
@@ -65,18 +67,46 @@ export function Header() {
   };
 
   return (
-    <header className="area-hd flex items-center gap-4 border-b border-line bg-panel px-4 max-[900px]:flex-wrap max-[900px]:py-2">
-      <div className="font-display text-xl leading-none font-bold tracking-[0.08em] whitespace-nowrap uppercase">
-        Mapa táctico <span className="text-accent">·</span> CO
+    <header className="area-hd hd max-[900px]:flex-wrap max-[900px]:py-2">
+      <div className="hd-mark">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+          <path
+            d="M12 1.5v6M12 16.5v6M1.5 12h6M16.5 12h6"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+          <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+        </svg>
+        <span>Mapa táctico</span>
       </div>
-      <div className="min-w-0 flex-1 truncate text-[13px] text-muted">{name}</div>
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-xs whitespace-nowrap text-muted" aria-live="polite">
-          {busy ? 'Procesando adjuntos…' : saveStatus}
-        </span>
+      <div className="hd-name" title={name}>
+        {name}
+      </div>
+      <nav className="hd-nav" aria-label="Herramientas">
         <button
           type="button"
-          className="btn px-2!"
+          onClick={() => show('models')}
+          title="Modelos 3D de aeronaves, vehículos y tropas"
+        >
+          Taller 3D
+        </button>
+        <button
+          type="button"
+          onClick={() => show('profiles')}
+          title="Fichas de las personas, grafos de vínculos y red"
+        >
+          Perfiles y vínculos
+        </button>
+      </nav>
+      <span className="flex-1" />
+      <span className="hd-status" aria-live="polite">
+        {busy ? 'Procesando adjuntos…' : saveStatus}
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          className="btn ico"
           aria-label="Deshacer"
           title="Deshacer (Ctrl+Z)"
           disabled={!canUndo}
@@ -86,7 +116,7 @@ export function Header() {
         </button>
         <button
           type="button"
-          className="btn px-2!"
+          className="btn ico"
           aria-label="Rehacer"
           title="Rehacer (Ctrl+Y o Ctrl+Mayús+Z)"
           disabled={!canRedo}
@@ -94,31 +124,45 @@ export function Header() {
         >
           ↷
         </button>
+      </div>
+      <div className="flex items-center gap-1.5">
         <select
-          aria-label="Abrir un ejemplo"
-          className="w-auto! py-[5px]! text-[13px]"
+          aria-label="Abrir un escenario de ejemplo"
+          className="w-auto! max-w-[150px] py-[5px]! text-[14px]"
           value=""
           onChange={(e) => onExample(Number(e.target.value))}
         >
-          <option value="">Ejemplos…</option>
+          <option value="">Ejemplos</option>
           {EXAMPLES.map((x, i) => (
             <option key={x.name} value={i}>
               {x.name}
             </option>
           ))}
         </select>
-        <button type="button" className="btn" onClick={onNew}>
+        <button
+          type="button"
+          className="btn"
+          onClick={onNew}
+          title="Empezar un escenario en blanco"
+        >
           Nuevo
         </button>
         <button
           type="button"
           className="btn"
+          title="Abrir un escenario guardado (.json)"
           onClick={() => confirm(CONFIRM) && fileIn.current?.click()}
         >
-          Abrir…
+          Abrir
         </button>
-        <button type="button" className="btn primary" disabled={busy} onClick={onExport}>
-          Exportar .json
+        <button
+          type="button"
+          className="btn primary"
+          disabled={busy}
+          onClick={onExport}
+          title="Descarga el escenario con sus adjuntos en un archivo .json"
+        >
+          Guardar archivo
         </button>
       </div>
       <input ref={fileIn} type="file" accept=".json,application/json" hidden onChange={onFile} />

@@ -8,6 +8,8 @@ en vivo. Para compartir un escenario se exporta y se importa (ver el apartado 7)
 
 ## 1. Barra superior
 
+- **Taller 3D** y **Perfiles y vínculos** abren esas herramientas a pantalla completa; **Volver
+  al mapa** regresa.
 - Nombre del escenario y estado del guardado («Guardado HH:MM»). El escenario se guarda solo en
   el navegador. Si aparece «Sin autoguardado», el navegador no pudo guardar (por ejemplo, porque
   no tiene espacio): exporta el escenario cuanto antes.
@@ -15,8 +17,8 @@ en vivo. Para compartir un escenario se exporta y se importa (ver el apartado 7)
   colocar, mover, editar, duplicar o borrar objetos, y añadir, editar o eliminar fases. Al
   deshacer, el editor vuelve a la fase en que se hizo el cambio. Escribir seguido en un campo
   cuenta como un solo paso. Se guardan hasta 100 pasos, solo mientras la página está abierta: al
-  recargar, o al usar Nuevo, Ejemplos… o Abrir…, el historial empieza de cero.
-- **Ejemplos…** abre uno de estos escenarios ficticios de entrenamiento:
+  recargar, o al usar Nuevo, Ejemplos o Abrir, el historial empieza de cero.
+- **Ejemplos** abre uno de estos escenarios ficticios de entrenamiento:
   - **Ejercicio Cordillera**, el ejemplo básico.
   - **Ejercicio Halcón**, una inserción aérea completa con varias unidades.
   - **Ejercicio Colibrí**, un asalto aéreo en 10 fases pensado para verse reproducido, mejor en
@@ -30,19 +32,26 @@ en vivo. Para compartir un escenario se exporta y se importa (ver el apartado 7)
     de cada registro dicen qué aporta y cuál es el límite de esa evidencia. El objetivo («ÉCHO»)
     aparece primero como posible (marco punteado) y solo se confirma en la última fase.
 - **Nuevo** empieza un escenario vacío.
-- **Abrir…** importa un `.json`, incluidos los del prototipo HTML original.
-- **Exportar .json** descarga el escenario con los adjuntos dentro del archivo.
+- **Abrir** importa un `.json`, incluidos los del prototipo HTML original.
+- **Guardar archivo** descarga el escenario (`.json`) con los adjuntos dentro del archivo.
 
-Nuevo, Ejemplos… y Abrir… piden confirmación, porque reemplazan el escenario actual: exporta
+Nuevo, Ejemplos y Abrir piden confirmación, porque reemplazan el escenario actual: exporta
 antes lo que quieras conservar.
 
 ## 2. Paleta (columna izquierda)
+
+Arriba, fijos, están el bando, la fuerza, el buscador y **Seleccionar y mover**. Debajo, los
+símbolos se reparten en cuatro pestañas: **Unidades**, **Puntos**, **Trazos y áreas** y
+**Tareas**. Un punto ámbar en una pestaña indica que ahí está la herramienta activa. El
+**buscador** encuentra cualquier símbolo por su nombre o grupo sin importar la pestaña
+(«fusilero», «emboscada», «puente»…); `Esc` lo limpia. **Ir a coordenadas o a una ciudad** está
+plegado al final de la columna.
 
 - **Ir a coordenadas**: acepta decimal (`4.7110, -74.0721`), grados-minutos-segundos
   (`4°42′40″N 74°04′20″O`) o un nombre de lugar. La búsqueda por nombre usa Nominatim
   (OpenStreetMap), necesita internet y solo busca en Colombia. También hay una lista de ciudades.
   **Marcar punto** deja un punto en ese sitio.
-- **Identidad**: amigo (rectángulo azul), hostil (rombo rojo), neutral (cuadrado verde) o
+- **Bando**: amigo (rectángulo azul), hostil (rombo rojo), neutral (cuadrado verde) o
   desconocido (trébol amarillo). Sigue el MFRE 1-02.
 - **Fuerza o estructura**: para amigos hay EJC, ARC, FAC, Policía y organización gubernamental;
   para hostiles, varias estructuras. Cada una cambia el color del relleno.
@@ -227,7 +236,7 @@ grafos**: en qué grafo aparece, con quién está unida (confirmado, por confirm
 estructuras integra; un clic en un vínculo abre la ficha de esa persona, **Ver en el grafo** lo
 muestra en el diagrama y **Agregar a un grafo** la pone en otro. En la lista, ◆ indica en
 cuántos grafos aparece cada ficha. En el grafo, **Crear ficha con este nodo** (o **Crear
-fichas de N personas sin ficha**, para todas) convierte lo dibujado en fichas: el rótulo
+ficha a N personas del diagrama**, para todas) convierte lo dibujado en fichas: el rótulo
 «a. Alias» pasa a alias, la segunda línea a cargo, el cuadro que la contiene a estructura y la
 foto a la ficha.
 
@@ -261,12 +270,22 @@ se usan esas.
 **Grafos y red.** Lámina de análisis de redes: integrantes de la amenaza (rombos),
 personas, fuentes (anillo de color según el tipo), propios, lugares y vehículos o propiedades
 (triángulo, admite foto), dentro de **cuadros de estructura** con pestaña (mando y control,
-finanzas, logística…). **Vincular elementos**: clic en el origen y en el destino; el tipo de
-vínculo (confirmado o por confirmar, de la organización o de la fuente) se elige antes y se
-cambia en el panel. Arrastra para mover (un cuadro mueve lo que tiene dentro) y usa la esquina
+finanzas, logística…). El panel izquierdo va de arriba abajo:
+
+- **Grafos**: la lista con cuántos elementos tiene cada uno, **+ Nuevo grafo** y, plegado,
+  **Cargar un ejemplo** (diagrama de estructura o red grande para teoría de grafos).
+- **Agregar al diagrama**: cada botón muestra el símbolo que pone (amenaza, persona, fuente,
+  propio, lugar, vehículo o bien, estructura). Aparece en el centro de la vista; luego se
+  arrastra a su sitio.
+- **Personas con ficha**: agrega una ficha, trae las que faltan o crea fichas para las personas
+  dibujadas que no tienen.
+- **Vincular**: se elige el tipo de vínculo viendo su línea (confirmado, por confirmar, de la
+  fuente) y se pulsa **Vincular dos elementos**; un aviso ámbar sobre el lienzo dice si toca
+  hacer clic en el origen o en el destino, y **Terminar** sale.
+
+En la pestaña **Red** estas secciones de edición se ocultan. Arrastra para mover (un cuadro mueve lo que tiene dentro) y usa la esquina
 naranja para cambiar su tamaño; Supr borra. Incluye el cuadro de **convenciones**. Se exporta
-en PNG o SVG y **Colocar en el mapa** lo pone como ficha. **Ejemplo ficticio** carga una red
-inventada para ver la estructura.
+en PNG o SVG y **Colocar en el mapa** lo pone como ficha.
 
 **Red (teoría de grafos).** La pestaña **Red** convierte el diagrama, mientras lo armas, en una
 red al estilo de Gephi: cada elemento es un nodo, cada cuadro de estructura es un nodo unido a
@@ -283,7 +302,7 @@ comunidad. Arrastra un nodo para ubicarlo, el fondo para moverte y la rueda para
 colores y posiciones para seguir el análisis en Gephi. El color por **Rol** clasifica como una lámina de
 inteligencia: líder o hub principal, operativo, familia o seguridad, sentimental, personal o
 apoyo, finanzas y bienes o evidencia (según el tipo, el detalle y la estructura de cada nodo).
-**+ Ejemplo de red (teoría de grafos)** carga una red ficticia grande (un cabecilla con seis
+**Cargar un ejemplo → Red grande para teoría de grafos** carga una red ficticia grande (un cabecilla con seis
 estructuras y dos aliados) para ver todo el análisis.
 
 ## 5. Línea de tiempo (abajo)

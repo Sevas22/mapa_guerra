@@ -378,7 +378,7 @@ export default function ModelWorkshop() {
           {model && def ? (
             <>
               <ModelViewer model={model} spin={spin} />
-              <div className="pointer-events-none absolute top-3 left-3 rounded bg-[rgba(16,22,31,.85)] px-3 py-2">
+              <div className="pointer-events-none absolute top-3 left-3 rounded bg-[rgba(18,23,19,.85)] px-3 py-2">
                 <div className="font-display text-lg font-bold tracking-wider uppercase">
                   {model.name}
                   {model.code ? (

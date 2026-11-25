@@ -10,7 +10,7 @@ export function Narration() {
   const phase = useEditorStore((s) => s.scenario.phases[s.current]);
   if (!phase) return null;
   return (
-    <div className="pointer-events-none absolute top-3 left-3 z-[500] max-w-[min(380px,calc(100%-90px))] rounded border border-l-[3px] border-line border-l-accent bg-[rgba(16,22,31,.9)] px-3 py-2.5">
+    <div className="pointer-events-none absolute top-3 left-3 z-[500] max-w-[min(380px,calc(100%-90px))] rounded border border-l-[3px] border-line border-l-accent bg-[rgba(18,23,19,.9)] px-3 py-2.5">
       <div className="font-mono text-[11px] font-medium tracking-[0.04em] text-accent">
         FASE {current + 1}/{count}
         {phase.date ? ` · ${phase.date}` : ''}

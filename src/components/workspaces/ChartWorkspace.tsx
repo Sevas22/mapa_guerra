@@ -111,6 +111,55 @@ const fileName = (t: string) =>
     .toLowerCase()
     .slice(0, 60) || 'grafo';
 
+/** Nombres cortos para los botones de agregar. */
+const KIND_SHORT: Record<NodeKind, string> = {
+  amenaza: 'Amenaza',
+  persona: 'Persona',
+  fuente: 'Fuente',
+  propio: 'Propio',
+  lugar: 'Lugar',
+  vehiculo: 'Vehículo o bien',
+};
+
+/** Nombres cortos de los vínculos (el nombre completo va en el título). */
+const EDGE_SHORT: Record<EdgeKind, string> = {
+  confirmado: 'Confirmado',
+  'por-confirmar': 'Por confirmar',
+  'fuente-confirmado': 'Fuente, confirmado',
+  'fuente-por-confirmar': 'Fuente, por confirmar',
+};
+
+/** Símbolo de cada clase de elemento, como en el diagrama. */
+function KindIcon({ kind }: { kind: NodeKind | 'estructura' }) {
+  const person = (ring: string) => (
+    <>
+      <circle cx="16" cy="16" r="12" fill="#f7f5ef" stroke={ring} strokeWidth="2.5" />
+      <circle cx="16" cy="13" r="4" fill="#1b1b1b" />
+      <path d="M8.5 23.5c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4" fill="#1b1b1b" />
+    </>
+  );
+  return (
+    <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+      {kind === 'amenaza' ? <path d="M16 3l13 13-13 13L3 16z" fill="#ff2a2a" /> : null}
+      {kind === 'persona' ? person('#1b1b1b') : null}
+      {kind === 'fuente' ? person(SOURCE_DEFS.estudio.color) : null}
+      {kind === 'propio' ? person('#2f6fd0') : null}
+      {kind === 'lugar' ? (
+        <rect x="4" y="8" width="24" height="16" fill="#f7f5ef" stroke="#1b1b1b" strokeWidth="2" />
+      ) : null}
+      {kind === 'vehiculo' ? (
+        <path d="M16 4l13 23H3z" fill="#f7f5ef" stroke="#1b1b1b" strokeWidth="2" />
+      ) : null}
+      {kind === 'estructura' ? (
+        <>
+          <rect x="3" y="9" width="26" height="19" fill="none" stroke="#e8eadf" strokeWidth="2" />
+          <rect x="3" y="4" width="14" height="6" fill="#a00d12" />
+        </>
+      ) : null}
+    </svg>
+  );
+}
+
 function NodeEditor({
   n,
   profiles,
@@ -429,6 +478,9 @@ export default function ChartWorkspace() {
     save(r.chart);
   };
   const missing = chart ? nodesWithoutProfile(chart, pmap).length : 0;
+  const notInChart = chart
+    ? profiles.filter((p) => !chart.nodes.some((n) => n.profileId === p.id)).length
+    : 0;
 
   const addGroup = () => {
     if (!chart) return;
@@ -616,106 +668,140 @@ export default function ChartWorkspace() {
         </button>
       </div>
       <div
-        className={`ws-body ${view === 'red' ? 'grid-cols-[240px_1fr]' : 'grid-cols-[240px_1fr_290px]'} max-[1000px]:grid-cols-1`}
+        className={`ws-body ${view === 'red' ? 'grid-cols-[264px_1fr]' : 'grid-cols-[264px_1fr_300px]'} max-[1000px]:grid-cols-1`}
       >
-        <aside className="ws-side border-r border-line">
+        <aside className="ws-side cw-side border-r border-line">
           <section className="sec">
             <h3 className="sec-h">Grafos</h3>
-            <div className="grid gap-1">
-              {charts.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  aria-pressed={c.id === chart?.id}
-                  className="truncate rounded border border-line bg-bg px-2 py-1.5 text-left text-[13px] aria-pressed:border-accent aria-pressed:bg-panel-2"
-                  onClick={() => {
-                    setChartId(c.id);
-                    setSel(null);
-                  }}
-                >
-                  {c.title || 'Sin título'}
+            {charts.length ? (
+              <div className="grid gap-1">
+                {charts.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    aria-pressed={c.id === chart?.id}
+                    className="cw-chart"
+                    onClick={() => {
+                      setChartId(c.id);
+                      setSel(null);
+                    }}
+                  >
+                    <span className="truncate">{c.title || 'Sin título'}</span>
+                    <span className="cw-count">{c.nodes.length}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <button type="button" className="btn w-full" onClick={createChart}>
+              + Nuevo grafo
+            </button>
+            <details className="cw-more">
+              <summary>Cargar un ejemplo</summary>
+              <div className="grid gap-1.5 pt-2">
+                <button type="button" className="btn w-full justify-start!" onClick={loadSample}>
+                  Diagrama de estructura
                 </button>
-              ))}
-            </div>
-            <div className="mt-2 grid gap-1.5">
-              <button type="button" className="btn" onClick={createChart}>
-                + Grafo en blanco
-              </button>
-              <button type="button" className="btn" onClick={loadSample}>
-                + Ejemplo ficticio
-              </button>
-              <button type="button" className="btn" onClick={loadNetworkSample}>
-                + Ejemplo de red (teoría de grafos)
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className="btn w-full justify-start!"
+                  onClick={loadNetworkSample}
+                >
+                  Red grande para teoría de grafos
+                </button>
+              </div>
+            </details>
           </section>
-          {chart ? (
+          {chart && view === 'diagrama' ? (
             <>
               <section className="sec">
-                <h3 className="sec-h">Agregar</h3>
-                <div className="grid grid-cols-2 gap-1.5">
+                <h3 className="sec-h">Agregar al diagrama</h3>
+                <div className="grid grid-cols-3 gap-1.5">
                   {NODE_KINDS.map((k) => (
                     <button
                       key={k}
                       type="button"
-                      className="btn text-xs! leading-tight"
+                      className="tool"
+                      title={`Agregar ${NODE_DEFS[k].name.toLowerCase()}`}
                       onClick={() => addNode(k)}
                     >
-                      {NODE_DEFS[k].name}
+                      <KindIcon kind={k} />
+                      <span>{KIND_SHORT[k]}</span>
                     </button>
                   ))}
-                  <button type="button" className="btn col-span-2 text-xs!" onClick={addGroup}>
-                    Cuadro de estructura
+                  <button
+                    type="button"
+                    className="tool"
+                    title="Agregar un cuadro de estructura (mando y control, finanzas…)"
+                    onClick={addGroup}
+                  >
+                    <KindIcon kind="estructura" />
+                    <span>Estructura</span>
                   </button>
                 </div>
-                <label className="field mt-2">
-                  Desde una ficha
-                  <select value={profilePick} onChange={(e) => addFromProfile(e.target.value)}>
-                    <option value="">
-                      {profiles.length ? 'Elegir perfil…' : 'No hay perfiles'}
-                    </option>
-                    {profiles.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {profileTitle(p)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  className="btn w-full text-xs!"
+                <p className="note">Aparece en el centro de la vista; arrástralo a su sitio.</p>
+              </section>
+              <section className="sec">
+                <h3 className="sec-h">Personas con ficha</h3>
+                <select
+                  aria-label="Agregar una persona desde su ficha"
+                  value={profilePick}
                   disabled={!profiles.length}
-                  onClick={addAllProfiles}
+                  onChange={(e) => addFromProfile(e.target.value)}
                 >
-                  Agregar todas las fichas que faltan
-                </button>
-                <button
-                  type="button"
-                  className="btn mt-1.5 w-full text-xs!"
-                  disabled={!missing}
-                  title="Cada persona dibujada sin ficha pasa a tener la suya en «Fichas»"
-                  onClick={() => makeProfiles()}
-                >
-                  {missing
-                    ? `Crear fichas de ${missing} persona${missing > 1 ? 's' : ''} sin ficha`
-                    : 'Todas las personas tienen ficha'}
-                </button>
+                  <option value="">
+                    {profiles.length ? 'Agregar desde una ficha…' : 'Aún no hay fichas'}
+                  </option>
+                  {profiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {profileTitle(p)}
+                    </option>
+                  ))}
+                </select>
+                {notInChart ? (
+                  <button type="button" className="btn w-full" onClick={addAllProfiles}>
+                    Traer las {notInChart} fichas que faltan
+                  </button>
+                ) : null}
+                {missing ? (
+                  <button
+                    type="button"
+                    className="btn w-full"
+                    title="Cada persona dibujada sin ficha pasa a tener la suya en «Fichas»"
+                    onClick={() => makeProfiles()}
+                  >
+                    Crear ficha a {missing} persona{missing > 1 ? 's' : ''} del diagrama
+                  </button>
+                ) : (
+                  <p className="note">Todas las personas del diagrama tienen ficha.</p>
+                )}
               </section>
               <section className="sec">
                 <h3 className="sec-h">Vincular</h3>
-                <label className="field">
-                  Tipo de vínculo
-                  <select
-                    value={edgeKind}
-                    onChange={(e) => setEdgeKind(e.target.value as EdgeKind)}
-                  >
-                    {EDGE_KINDS.map((k) => (
-                      <option key={k} value={k}>
-                        {EDGE_DEFS[k].name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="cw-edges" role="radiogroup" aria-label="Tipo de vínculo">
+                  {EDGE_KINDS.map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      role="radio"
+                      aria-checked={edgeKind === k}
+                      title={EDGE_DEFS[k].name}
+                      onClick={() => setEdgeKind(k)}
+                    >
+                      <svg viewBox="0 0 40 8" width="40" height="8" aria-hidden="true">
+                        <line
+                          x1="1"
+                          y1="4"
+                          x2="39"
+                          y2="4"
+                          stroke={EDGE_DEFS[k].color === '#111111' ? '#e8eadf' : '#5b8cff'}
+                          strokeWidth="2"
+                          strokeDasharray={EDGE_DEFS[k].dashed ? '5 4' : undefined}
+                        />
+                      </svg>
+                      {EDGE_SHORT[k]}
+                    </button>
+                  ))}
+                </div>
                 <button
                   type="button"
                   className={`btn w-full ${mode.kind === 'connect' ? 'primary' : ''}`}
@@ -727,16 +813,8 @@ export default function ChartWorkspace() {
                     )
                   }
                 >
-                  {mode.kind === 'connect' ? 'Terminar de vincular' : 'Vincular elementos'}
+                  {mode.kind === 'connect' ? 'Terminar de vincular' : 'Vincular dos elementos'}
                 </button>
-                {mode.kind === 'connect' ? (
-                  <p className="note mt-1.5">
-                    {mode.from
-                      ? 'Ahora haz clic en el destino del vínculo.'
-                      : 'Haz clic en el origen (persona, rombo o cuadro).'}{' '}
-                    Esc para salir.
-                  </p>
-                ) : null}
               </section>
             </>
           ) : null}
@@ -756,7 +834,20 @@ export default function ChartWorkspace() {
                 onPointerCancel={endDrag}
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
-              <div className="absolute right-3 bottom-3 flex gap-1 rounded bg-[rgba(16,22,31,.9)] p-1">
+              {mode.kind === 'connect' ? (
+                <div role="status" className="cw-hint">
+                  <span>
+                    {mode.from
+                      ? 'Ahora haz clic en el destino del vínculo.'
+                      : 'Haz clic en el origen: persona, rombo o cuadro.'}{' '}
+                    <b>{EDGE_SHORT[edgeKind]}</b>
+                  </span>
+                  <button type="button" onClick={() => setMode({ kind: 'select' })}>
+                    Terminar
+                  </button>
+                </div>
+              ) : null}
+              <div className="absolute right-3 bottom-3 flex gap-1 rounded bg-[rgba(18,23,19,.9)] p-1">
                 <button
                   type="button"
                   className="btn px-2!"
@@ -781,15 +872,16 @@ export default function ChartWorkspace() {
           ) : (
             <div className="grid h-full place-items-center p-6 text-center text-muted">
               <div>
-                <p className="mb-3">
-                  Crea un grafo en blanco o carga el ejemplo ficticio para ver la estructura.
+                <p className="mx-auto mb-3 max-w-[44ch]">
+                  Arma el diagrama de la amenaza: personas, estructuras y sus vínculos. Empieza en
+                  blanco o abre un ejemplo para ver cómo se ve.
                 </p>
                 <div className="flex justify-center gap-2">
-                  <button type="button" className="btn" onClick={createChart}>
-                    Grafo en blanco
+                  <button type="button" className="btn" onClick={loadSample}>
+                    Ver un ejemplo
                   </button>
-                  <button type="button" className="btn primary" onClick={loadSample}>
-                    Ejemplo ficticio
+                  <button type="button" className="btn primary" onClick={createChart}>
+                    Nuevo grafo
                   </button>
                 </div>
               </div>
@@ -836,7 +928,7 @@ export default function ChartWorkspace() {
                   <section className="sec">
                     <p className="note">
                       Haz clic en un elemento para editarlo. Arrastra para moverlo. Para unir dos
-                      elementos usa «Vincular elementos».
+                      elementos usa «Vincular dos elementos».
                     </p>
                   </section>
                 )}

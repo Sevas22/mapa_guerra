@@ -351,7 +351,7 @@ export default function NetworkView({
           </g>
         </svg>
 
-        <div className="absolute top-2 left-2 flex flex-wrap items-center gap-1.5 rounded bg-[rgba(16,22,31,.9)] px-2 py-1.5 text-[12px] text-soft">
+        <div className="absolute top-2 left-2 flex flex-wrap items-center gap-1.5 rounded bg-[rgba(18,23,19,.9)] px-2 py-1.5 text-[12px] text-soft">
           <label className="flex items-center gap-1">
             Tamaño
             <select

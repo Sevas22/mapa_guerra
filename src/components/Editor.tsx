@@ -47,6 +47,7 @@ export default function Editor() {
       {/* En 3D el mapa Leaflet sigue montado (oculto) para conservar su estado. */}
       <main className="area-map relative min-h-0" data-view={view3d ? '3d' : '2d'}>
         <TacticalMap />
+        <div className="map-frame" aria-hidden="true" />
         {view3d && <Map3D />}
         <View3DToggle />
         <Narration />

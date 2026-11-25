@@ -1,11 +1,13 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import {
   FACTIONS,
   LINES,
   POINTS,
   UNITS,
   forcesFor,
+  plainName,
   type LineDef,
   type LineGroup,
   type PointDef,
@@ -16,7 +18,6 @@ import {
 import { pointOpts, pointSVG, previewLine, textPreviewSVG, unitSVG } from '@/domain/symbols';
 import type { FactionId, LineType, PointType, UnitType } from '@/domain/types';
 import { useEditorStore, type Tool } from '@/store/editorStore';
-import { useWorkspace, type WorkspaceId } from '@/store/workspaceStore';
 import { GotoCoords } from './GotoCoords';
 
 const UNIT_GROUPS: UnitGroup[] = [
@@ -31,17 +32,47 @@ const POINT_GROUPS: PointGroup[] = [
   'Instalaciones y lugares',
 ];
 
-const LINE_GROUPS: LineGroup[] = [
-  'Trazos',
-  'Áreas',
-  'Tareas tácticas',
-  'Facilitadoras y retrógradas',
-];
+type Category = 'unidades' | 'puntos' | 'trazos' | 'tareas';
+
+const CATEGORIES: { id: Category; name: string; groups: (UnitGroup | PointGroup | LineGroup)[] }[] =
+  [
+    { id: 'unidades', name: 'Unidades', groups: UNIT_GROUPS },
+    { id: 'puntos', name: 'Puntos', groups: POINT_GROUPS },
+    { id: 'trazos', name: 'Trazos y áreas', groups: ['Trazos', 'Áreas'] },
+    { id: 'tareas', name: 'Tareas', groups: ['Tareas tácticas', 'Facilitadoras y retrógradas'] },
+  ];
 
 type ToolSpec =
   | { kind: 'unit'; type: UnitType }
   | { kind: 'point'; type: PointType }
   | { kind: 'line'; type: LineType };
+
+interface Entry {
+  spec: ToolSpec;
+  name: string;
+  group: string;
+}
+
+/** Todos los símbolos del catálogo, en el orden de la paleta. */
+const ENTRIES: Entry[] = [
+  ...(Object.entries(UNITS) as [UnitType, UnitDef][]).map(([type, u]) => ({
+    spec: { kind: 'unit' as const, type },
+    name: u.name,
+    group: u.group,
+  })),
+  ...(Object.entries(POINTS) as [PointType, PointDef][]).map(([type, p]) => ({
+    spec: { kind: 'point' as const, type },
+    name: p.name,
+    group: p.group,
+  })),
+  ...(Object.entries(LINES) as [LineType, LineDef][]).map(([type, l]) => ({
+    spec: { kind: 'line' as const, type },
+    name: l.name,
+    group: l.group,
+  })),
+];
+
+const fold = (s: string) => plainName(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const isActive = (tool: Tool, spec: ToolSpec) =>
   tool.mode !== 'select' && tool.kind === spec.kind && tool.type === spec.type;
@@ -58,189 +89,176 @@ function Svg({ html, className }: { html: string; className?: string }) {
   return <span className={className} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-function ToolButton({ spec, name, icon }: { spec: ToolSpec; name: string; icon: React.ReactNode }) {
+/** Vista previa del símbolo con el bando y la fuerza elegidos. */
+function Icon({ spec, faction, force }: { spec: ToolSpec; faction: FactionId; force: string }) {
+  const c = FACTIONS[faction].vivid;
+  if (spec.kind === 'unit')
+    return <Svg html={unitSVG({ type: spec.type, faction, force }, [42, 45])} />;
+  if (spec.kind === 'line') return <Svg html={previewLine(spec.type, c)} />;
+  if (spec.type === 'texto') return <Svg html={textPreviewSVG(c)} />;
+  return (
+    <Svg
+      html={pointSVG(spec.type, pointOpts({ type: spec.type, faction, force }))}
+      className="grid h-[34px] place-items-center"
+    />
+  );
+}
+
+function ToolButton({ e, faction, force }: { e: Entry; faction: FactionId; force: string }) {
   const tool = useEditorStore((s) => s.tool);
   const setTool = useEditorStore((s) => s.setTool);
-  const active = isActive(tool, spec);
+  const active = isActive(tool, e.spec);
   return (
     <button
       type="button"
       className="tool"
-      title={name.replaceAll('­', '')}
+      title={plainName(e.name)}
       aria-pressed={active}
-      onClick={() => setTool(active ? { mode: 'select' } : toToolMode(spec))}
+      onClick={() => setTool(active ? { mode: 'select' } : toToolMode(e.spec))}
     >
-      {icon}
-      <span>{name}</span>
+      <Icon spec={e.spec} faction={faction} force={force} />
+      <span>{e.name}</span>
     </button>
   );
 }
 
-const WORKSPACES: { id: WorkspaceId; name: string; desc: string; icon: string }[] = [
-  {
-    id: 'models',
-    name: 'Taller 3D',
-    desc: 'Modela aviones, helicópteros y drones y velos volar en 3D',
-    icon: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M4 11l8 2 8-2M8 19l4-1 4 1"/></svg>',
-  },
-  {
-    id: 'profiles',
-    name: 'Perfiles y vínculos',
-    desc: 'Fichas de las personas y sus grafos de vínculos y red',
-    icon: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3" width="10" height="12" rx="1.5"/><circle cx="7.5" cy="8" r="2"/><path d="M4.5 13c.5-1.5 1.6-2.2 3-2.2s2.5.7 3 2.2"/><circle cx="19" cy="6" r="2.2" fill="currentColor" fill-opacity=".35"/><circle cx="18" cy="18" r="2.6"/><path d="M12.5 8.5l4.3-2M12.5 12l3.6 4.2M19 8.2v7.2"/></svg>',
-  },
-];
-
-/** Accesos a las áreas de trabajo a pantalla completa. */
-function WorkspaceButtons() {
-  const show = useWorkspace((s) => s.show);
+function Grid({ items, faction, force }: { items: Entry[]; faction: FactionId; force: string }) {
   return (
-    <section className="sec">
-      <h2 className="sec-h">Herramientas</h2>
-      <div className="grid gap-1.5">
-        {WORKSPACES.map((w) => (
-          <button
-            key={w.id}
-            type="button"
-            title={w.desc}
-            className="flex min-w-0 items-center gap-2 overflow-hidden rounded border border-line bg-bg px-2 py-1.5 text-left hover:border-muted"
-            onClick={() => show(w.id)}
-          >
-            <span className="text-accent" dangerouslySetInnerHTML={{ __html: w.icon }} />
-            <span className="min-w-0">
-              <span className="block text-[13px] text-fg">{w.name}</span>
-              <span className="block truncate text-[11px] text-muted">{w.desc}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-    </section>
+    <div className="grid grid-cols-3 gap-1.5">
+      {items.map((e) => (
+        <ToolButton key={`${e.spec.kind}:${e.spec.type}`} e={e} faction={faction} force={force} />
+      ))}
+    </div>
   );
 }
 
-/** Columna izquierda: coordenadas, bando y herramientas. */
+/** Columna izquierda: bando, buscador y símbolos por categoría. */
 export function Palette() {
   const faction = useEditorStore((s) => s.faction);
   const setFaction = useEditorStore((s) => s.setFaction);
-  const isSelect = useEditorStore((s) => s.tool.mode === 'select');
+  const tool = useEditorStore((s) => s.tool);
   const setTool = useEditorStore((s) => s.setTool);
   const force = useEditorStore((s) => s.force);
   const setForce = useEditorStore((s) => s.setForce);
   const forces = forcesFor(faction);
-  const c = FACTIONS[faction].vivid;
+  const [cat, setCat] = useState<Category>('unidades');
+  const [query, setQuery] = useState('');
+
+  const found = useMemo(() => {
+    const q = fold(query.trim());
+    return q ? ENTRIES.filter((e) => fold(`${e.name} ${e.group}`).includes(q)) : null;
+  }, [query]);
+  const current = CATEGORIES.find((x) => x.id === cat)!;
+  // Categoría del símbolo activo, para marcarla aunque se esté viendo otra.
+  const activeGroup =
+    tool.mode === 'select'
+      ? null
+      : ENTRIES.find((e) => e.spec.kind === tool.kind && e.spec.type === tool.type)?.group;
+  const activeCat = CATEGORIES.find((x) => x.groups.some((g) => g === activeGroup))?.id;
 
   return (
-    <>
-      <GotoCoords />
-      <WorkspaceButtons />
-      <section className="sec">
-        <h2 className="sec-h">Identidad</h2>
-        <div className="grid grid-cols-2 gap-1.5">
+    <div className="flex min-h-full flex-col">
+      <div className="sticky top-0 z-10 grid gap-2.5 border-b border-line bg-panel p-3">
+        <div className="pal-side" role="radiogroup" aria-label="Bando de los símbolos">
           {(Object.entries(FACTIONS) as [FactionId, (typeof FACTIONS)[FactionId]][]).map(
             ([k, f]) => (
               <button
                 key={k}
                 type="button"
-                aria-pressed={k === faction}
+                role="radio"
+                aria-checked={k === faction}
                 onClick={() => setFaction(k)}
-                className="flex items-center gap-[7px] rounded border border-line bg-bg px-2 py-1.5 text-left text-xs aria-pressed:border-accent aria-pressed:bg-panel-2"
+                style={{ '--side': f.fill } as React.CSSProperties}
               >
-                <i className="size-3 flex-none rounded-[2px]" style={{ background: f.fill }} />
+                <i aria-hidden="true" />
                 {f.name}
               </button>
             ),
           )}
         </div>
         {forces.length ? (
-          <label className="field">
-            {faction === 'azul' ? 'Fuerza' : 'Estructura'}
-            <select value={force} onChange={(e) => setForce(e.target.value)}>
-              <option value="">
-                {faction === 'azul' ? 'Amigo (sin fuerza)' : 'Hostil genérico'}
+          <select
+            aria-label={faction === 'azul' ? 'Fuerza' : 'Estructura'}
+            value={force}
+            onChange={(e) => setForce(e.target.value)}
+          >
+            <option value="">
+              {faction === 'azul' ? 'Amigo (sin fuerza)' : 'Hostil genérico'}
+            </option>
+            {forces.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
               </option>
-              {forces.map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.name}
-                </option>
-              ))}
-            </select>
-          </label>
+            ))}
+          </select>
         ) : null}
-      </section>
-      <section className="sec">
+        <input
+          type="search"
+          className="pal-search"
+          placeholder="Buscar símbolo…"
+          aria-label="Buscar símbolo"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setQuery('');
+          }}
+        />
         <button
           type="button"
-          className={`btn justify-between! ${isSelect ? 'primary' : ''}`}
+          aria-pressed={tool.mode === 'select'}
+          className="pal-select"
           onClick={() => setTool({ mode: 'select' })}
         >
-          Seleccionar y mover <kbd>V</kbd>
+          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+            <path d="M3 2l9 5.2-4 .9 2.3 4.4-1.7.9L6.3 9 3.4 11.6z" fill="currentColor" />
+          </svg>
+          Seleccionar y mover
+          <kbd>V</kbd>
         </button>
-      </section>
-      {UNIT_GROUPS.map((g) => (
-        <section key={g} className="sec">
-          <h2 className="sec-h">{g}</h2>
-          <div className="grid grid-cols-3 gap-1.5">
-            {(Object.entries(UNITS) as [UnitType, UnitDef][])
-              .filter(([, u]) => u.group === g)
-              .map(([k, u]) => (
-                <ToolButton
-                  key={k}
-                  spec={{ kind: 'unit', type: k }}
-                  name={u.name}
-                  icon={<Svg html={unitSVG({ type: k, faction, force }, [42, 45])} />}
-                />
-              ))}
-          </div>
+      </div>
+
+      {found ? (
+        <section className="sec">
+          <h2 className="sec-h">
+            {found.length
+              ? `${found.length} símbolo${found.length > 1 ? 's' : ''} con «${query.trim()}»`
+              : `Ningún símbolo tiene «${query.trim()}». Prueba con otra palabra.`}
+          </h2>
+          <Grid items={found} faction={faction} force={force} />
         </section>
-      ))}
-      {POINT_GROUPS.map((g) => (
-        <section key={g} className="sec">
-          <h2 className="sec-h">{g}</h2>
-          <div className="grid grid-cols-3 gap-1.5">
-            {(Object.entries(POINTS) as [PointType, PointDef][])
-              .filter(([, p]) => p.group === g)
-              .map(([k, p]) => (
-                <ToolButton
-                  key={k}
-                  spec={{ kind: 'point', type: k }}
-                  name={p.name}
-                  icon={
-                    k === 'texto' ? (
-                      <Svg html={textPreviewSVG(c)} />
-                    ) : (
-                      <Svg
-                        html={pointSVG(k, pointOpts({ type: k, faction, force }))}
-                        className="grid h-[34px] place-items-center"
-                      />
-                    )
-                  }
-                />
-              ))}
+      ) : (
+        <>
+          <div className="pal-tabs" role="tablist" aria-label="Categorías de símbolos">
+            {CATEGORIES.map((x) => (
+              <button
+                key={x.id}
+                type="button"
+                role="tab"
+                aria-selected={x.id === cat}
+                data-active={x.id === activeCat ? '' : undefined}
+                onClick={() => setCat(x.id)}
+              >
+                {x.name}
+              </button>
+            ))}
           </div>
-        </section>
-      ))}
-      {LINE_GROUPS.map((g) => (
-        <section key={g} className="sec">
-          <h2 className="sec-h">{g}</h2>
-          {g === 'Tareas tácticas' ? (
-            <p className="note">
-              Dos clics: desde la unidad hacia el objetivo (en las circulares, centro y borde).
-            </p>
-          ) : null}
-          <div className="grid grid-cols-3 gap-1.5">
-            {(Object.entries(LINES) as [LineType, LineDef][])
-              .filter(([, l]) => l.group === g)
-              .map(([k, l]) => (
-                <ToolButton
-                  key={k}
-                  spec={{ kind: 'line', type: k }}
-                  name={l.name}
-                  icon={<Svg html={previewLine(k, c)} />}
-                />
-              ))}
-          </div>
-        </section>
-      ))}
-    </>
+          {current.groups.map((g) => (
+            <section key={g} className="sec">
+              <h2 className="sec-h">{g}</h2>
+              {g === 'Tareas tácticas' ? (
+                <p className="note">
+                  Dos clics: desde la unidad hacia el objetivo (en las circulares, centro y borde).
+                </p>
+              ) : null}
+              <Grid items={ENTRIES.filter((e) => e.group === g)} faction={faction} force={force} />
+            </section>
+          ))}
+        </>
+      )}
+      <details className="pal-goto mt-auto">
+        <summary>Ir a coordenadas o a una ciudad</summary>
+        <GotoCoords />
+      </details>
+    </div>
   );
 }
