@@ -645,3 +645,93 @@ ${edges}
 </gexf>
 `;
 }
+
+// ---------------------------------------------------------------- roles (colores tipo lámina)
+
+export const ROLES = [
+  'lider',
+  'operativo',
+  'familia',
+  'sentimental',
+  'apoyo',
+  'finanzas',
+  'bienes',
+  'general',
+] as const;
+export type Role = (typeof ROLES)[number];
+
+export const ROLE_DEFS: Record<Role, { name: string; color: string }> = {
+  lider: { name: 'Líder / hub principal', color: '#2f7de1' },
+  operativo: { name: 'Operativo / delictivo', color: '#e5484d' },
+  familia: { name: 'Familia / seguridad', color: '#3fae49' },
+  sentimental: { name: 'Sentimental', color: '#a855f7' },
+  apoyo: { name: 'Personal / apoyo', color: '#14a38b' },
+  finanzas: { name: 'Finanzas / económico', color: '#f59e0b' },
+  bienes: { name: 'Bienes / evidencia', color: '#e6b800' },
+  general: { name: 'Contacto general', color: '#8b95a1' },
+};
+
+/** Rol de una estructura según su título. */
+function structureRole(title: string): Role {
+  const t = title.toLowerCase();
+  if (/finanz|econ|dinero|lavado/.test(t)) return 'finanzas';
+  if (/bien|evidenc|inmueble|propiedad|veh/.test(t)) return 'bienes';
+  if (/segur|famil|escolta/.test(t)) return 'familia';
+  if (/mando|control|operat|armad|milit/.test(t)) return 'operativo';
+  return 'apoyo';
+}
+
+/** Rol de una persona según su detalle (familia, pareja…). */
+function personRole(sub: string): Role | null {
+  const t = sub.toLowerCase();
+  if (/sentim|pareja|novi|amante|esposa|esposo|expareja/.test(t)) return 'sentimental';
+  if (/famil|madre|padre|herman|hij|t[ií]o|primo/.test(t)) return 'familia';
+  if (/apoyo|contacto|log[ií]st/.test(t)) return 'apoyo';
+  return null;
+}
+
+/**
+ * Rol de cada nodo para colorear la red como una lámina de inteligencia: líderes (integrantes
+ * de la amenaza con muchos vínculos), operativos, familia, sentimental, apoyo, finanzas y
+ * bienes. Los integrantes de una estructura toman su rol y los contactos sueltos (un solo
+ * vínculo) heredan el de quien los conecta.
+ */
+export function roles(net: Network, a: NetworkAnalysis): Map<string, Role> {
+  const out = new Map<string, Role>();
+  const byId = new Map(net.nodes.map((n) => [n.id, n]));
+  const threatDeg = net.nodes
+    .filter((n) => n.type === 'amenaza')
+    .map((n) => a.metrics.get(n.id)!.degree);
+  const maxDeg = Math.max(0, ...threatDeg);
+  const leaderMin = Math.max(5, Math.ceil(maxDeg * 0.4));
+  for (const n of net.nodes) {
+    const deg = a.metrics.get(n.id)!.degree;
+    let r: Role;
+    if (n.type === 'estructura') r = structureRole(n.label);
+    else if (n.type === 'amenaza') r = deg >= leaderMin ? 'lider' : 'operativo';
+    else if (n.type === 'lugar' || n.type === 'vehiculo') r = 'bienes';
+    else if (n.type === 'fuente') r = 'apoyo';
+    else r = personRole(n.sub) ?? 'general';
+    out.set(n.id, r);
+  }
+  // Pertenencia: los miembros de una estructura (salvo líderes) toman su rol.
+  for (const e of net.edges) {
+    if (e.kind !== 'pertenencia') continue;
+    const [g, m] =
+      byId.get(e.source)?.type === 'estructura' ? [e.source, e.target] : [e.target, e.source];
+    if (out.get(m) !== 'lider') out.set(m, out.get(g)!);
+  }
+  // Contactos sueltos: heredan el rol de su único vecino (si no es un líder).
+  const nb = new Map<string, string[]>();
+  for (const e of net.edges) {
+    nb.set(e.source, [...(nb.get(e.source) ?? []), e.target]);
+    nb.set(e.target, [...(nb.get(e.target) ?? []), e.source]);
+  }
+  for (const n of net.nodes) {
+    const list = nb.get(n.id) ?? [];
+    if (out.get(n.id) !== 'general' || list.length !== 1) continue;
+    const r = out.get(list[0]!)!;
+    if (r !== 'lider') out.set(n.id, r);
+  }
+  return out;
+}

@@ -8,6 +8,8 @@ import {
   METRIC_NAMES,
   NET_EDGE_DEFS,
   NET_TYPE_NAMES,
+  ROLES,
+  ROLE_DEFS,
   TYPE_COLORS,
   analyze,
   buildNetwork,
@@ -15,6 +17,7 @@ import {
   diagramPositions,
   forceLayout,
   ranking,
+  roles,
   toGexf,
   type MetricKey,
   type NetEdgeKind,
@@ -24,7 +27,7 @@ import {
 import type { Profile } from '@/domain/profiles';
 import { downloadText } from '@/lib/imageResize';
 
-type ColorBy = 'community' | 'type';
+type ColorBy = 'rol' | 'community' | 'type';
 type Labels = 'principales' | 'todas';
 
 /** Iteraciones por cuadro y cuadros de animación al reorganizar la red. */
@@ -51,7 +54,7 @@ export default function NetworkView({
   const net = useMemo(() => buildNetwork(chart, pmap), [chart, pmap]);
   const an = useMemo(() => analyze(net), [net]);
   const [sizeBy, setSizeBy] = useState<MetricKey>('betweenness');
-  const [colorBy, setColorBy] = useState<ColorBy>('community');
+  const [colorBy, setColorBy] = useState<ColorBy>('rol');
   const [labels, setLabels] = useState<Labels>('principales');
   const [sel, setSel] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
@@ -109,12 +112,13 @@ export default function NetworkView({
 
   const maxMetric = Math.max(...net.nodes.map((n) => an.metrics.get(n.id)![sizeBy]), 1e-9);
   const radius = (id: string) => 7 + 26 * Math.sqrt(an.metrics.get(id)![sizeBy] / maxMetric);
+  const roleMap = useMemo(() => roles(net, an), [net, an]);
   const color = (id: string) => {
-    const n = net.nodes.find((x) => x.id === id)!;
-    return colorBy === 'community'
-      ? communityColor(an.metrics.get(id)!.community)
-      : TYPE_COLORS[n.type];
+    if (colorBy === 'rol') return ROLE_DEFS[roleMap.get(id) ?? 'general'].color;
+    if (colorBy === 'community') return communityColor(an.metrics.get(id)!.community);
+    return TYPE_COLORS[net.nodes.find((x) => x.id === id)!.type];
   };
+  const usedRoles = ROLES.filter((r) => [...roleMap.values()].includes(r));
   const focus = hover ?? sel;
   const neighbors = useMemo(() => {
     if (!focus) return null;
@@ -369,6 +373,7 @@ export default function NetworkView({
               value={colorBy}
               onChange={(e) => setColorBy(e.target.value as ColorBy)}
             >
+              <option value="rol">Rol</option>
               <option value="community">Comunidad</option>
               <option value="type">Tipo</option>
             </select>
@@ -410,6 +415,16 @@ export default function NetworkView({
                   style={{ background: TYPE_COLORS[t] }}
                 />
                 {NET_TYPE_NAMES[t]}
+              </div>
+            ))
+          ) : colorBy === 'rol' ? (
+            usedRoles.map((r) => (
+              <div key={r} className="flex items-center gap-1.5">
+                <i
+                  className="inline-block size-2.5 rounded-full"
+                  style={{ background: ROLE_DEFS[r].color }}
+                />
+                {ROLE_DEFS[r].name}
               </div>
             ))
           ) : (

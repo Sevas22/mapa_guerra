@@ -29,6 +29,7 @@ import {
   type TabSide,
 } from '@/domain/linkChart';
 import { sampleLinkChart } from '@/domain/linkChartSample';
+import { sampleNetworkChart } from '@/domain/networkSample';
 import {
   SOURCE_DEFS,
   SOURCE_TYPES,
@@ -409,6 +410,15 @@ export default function ChartWorkspace() {
     setSel(null);
   };
 
+  // Ejemplo grande para la vista de red: se abre directamente en «Red».
+  const loadNetworkSample = () => {
+    const c = sampleNetworkChart();
+    save(c);
+    setChartId(c.id);
+    setSel(null);
+    setView('red');
+  };
+
   const loadSample = () => {
     const { profiles: ps, chart: c } = sampleLinkChart();
     addProfiles(ps);
@@ -600,6 +610,9 @@ export default function ChartWorkspace() {
               </button>
               <button type="button" className="btn" onClick={loadSample}>
                 + Ejemplo ficticio
+              </button>
+              <button type="button" className="btn" onClick={loadNetworkSample}>
+                + Ejemplo de red (teoría de grafos)
               </button>
             </div>
           </section>

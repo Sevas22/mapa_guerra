@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { newChart, newEdge, newGroup, newNode, profileMap } from './linkChart';
 import { sampleLinkChart } from './linkChartSample';
+import { sampleNetworkChart } from './networkSample';
 import {
   analyze,
   buildNetwork,
   diagramPositions,
   forceLayout,
   ranking,
+  roles,
   toGexf,
   type Network,
 } from './network';
@@ -151,5 +153,35 @@ describe('análisis de redes', () => {
     expect(x.match(/<edge /g)).toHaveLength(7);
     expect(x).toContain('Prueba &lt;&amp;&gt;');
     expect(x).toContain('<attvalue for="puente" value="true"/>');
+  });
+
+  it('el ejemplo de red grande forma comunidades y tres líderes con sus roles', () => {
+    const c = sampleNetworkChart();
+    const n = buildNetwork(c, new Map());
+    const a = analyze(n);
+    expect(n.nodes.length).toBeGreaterThan(150);
+    expect(a.components).toBe(1);
+    expect(a.communities).toBeGreaterThanOrEqual(6);
+    expect(a.modularity).toBeGreaterThan(0.6);
+    const top = ranking(n, a, 'betweenness')
+      .slice(0, 3)
+      .map((x) => x.label);
+    expect(top).toEqual(['a. Mamut', 'a. Coyote', 'a. Lince']);
+    const r = roles(n, a);
+    const role = (label: string) => r.get(n.nodes.find((x) => x.label === label)!.id);
+    expect(role('a. Mamut')).toBe('lider');
+    expect(role('a. Coyote')).toBe('lider');
+    expect(role('a. Rayo')).toBe('operativo');
+    expect(role('Finanzas')).toBe('finanzas');
+    expect(role('FI-01')).toBe('finanzas');
+    expect(role('Seguridad personal')).toBe('familia');
+    expect(role('Bienes / evidencia')).toBe('bienes');
+    expect(role('Madre de Coyote')).toBe('familia');
+    expect(role('Pareja de Lince')).toBe('sentimental');
+    // Los puentes hacia los aliados unen comunidades distintas.
+    const bridge = n.edges.find(
+      (e) => e.target === n.nodes.find((x) => x.label === 'a. Coyote')!.id && a.bridges.has(e.id),
+    );
+    expect(bridge).toBeTruthy();
   });
 });

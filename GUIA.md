@@ -268,7 +268,11 @@ entre comunidades. El panel muestra el resumen (densidad, grado medio, comunidad
 modularidad, componentes), el ranking de **actores clave** y la composición de cada
 comunidad. Arrastra un nodo para ubicarlo, el fondo para moverte y la rueda para acercar;
 **Reorganizar** vuelve a distribuirla. **Exportar GEXF (Gephi)** guarda la red con métricas,
-colores y posiciones para seguir el análisis en Gephi.
+colores y posiciones para seguir el análisis en Gephi. El color por **Rol** clasifica como una lámina de
+inteligencia: líder o hub principal, operativo, familia o seguridad, sentimental, personal o
+apoyo, finanzas y bienes o evidencia (según el tipo, el detalle y la estructura de cada nodo).
+**+ Ejemplo de red (teoría de grafos)** carga una red ficticia grande (un cabecilla con seis
+estructuras y dos aliados) para ver todo el análisis.
 
 ## 5. Línea de tiempo (abajo)
 
