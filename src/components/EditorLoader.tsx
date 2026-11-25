@@ -9,9 +9,7 @@ import dynamic from 'next/dynamic';
 const Editor = dynamic(() => import('./Editor'), {
   ssr: false,
   loading: () => (
-    <div className="grid h-full place-items-center font-display text-xl font-bold tracking-[0.08em] text-muted uppercase">
-      Cargando mapa táctico…
-    </div>
+    <div className="grid h-full place-items-center text-sm text-muted">Cargando mapa táctico…</div>
   ),
 });
 

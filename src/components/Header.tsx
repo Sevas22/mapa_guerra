@@ -8,6 +8,7 @@ import { fitScenario, flyToView, resetView } from '@/lib/mapBridge';
 import { storeEmbeddedMedia, withEmbeddedMedia } from '@/lib/mediaStore';
 import { useEditorStore } from '@/store/editorStore';
 import { useWorkspace } from '@/store/workspaceStore';
+import { GotoCoords } from './palette/GotoCoords';
 
 const CONFIRM = '¿Reemplazar el escenario actual? Exporta antes el actual si quieres conservarlo.';
 
@@ -99,7 +100,7 @@ export function Header() {
           Perfiles y vínculos
         </button>
       </nav>
-      <span className="flex-1" />
+      <GotoCoords />
       <span className="hd-status" aria-live="polite">
         {busy ? 'Procesando adjuntos…' : saveStatus}
       </span>

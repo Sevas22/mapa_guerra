@@ -321,9 +321,7 @@ export default function ModelWorkshop() {
             {realHere.length ? (
               MODEL_BASES.filter((b) => realHere.some((a) => a.base === b)).map((b) => (
                 <div key={b} className="mb-2">
-                  <h4 className="mb-1 font-mono text-[10px] tracking-wider text-muted uppercase">
-                    {BASE_DEFS[b].name}
-                  </h4>
+                  <h4 className="mb-1 text-[11px] font-medium text-muted">{BASE_DEFS[b].name}</h4>
                   <div className="grid gap-1">
                     {realHere
                       .filter((a) => a.base === b)
@@ -379,7 +377,7 @@ export default function ModelWorkshop() {
             <>
               <ModelViewer model={model} spin={spin} />
               <div className="pointer-events-none absolute top-3 left-3 rounded bg-[rgba(18,23,19,.85)] px-3 py-2">
-                <div className="font-display text-lg font-bold tracking-wider uppercase">
+                <div className="text-base font-semibold">
                   {model.name}
                   {model.code ? (
                     <span className="ml-2 font-mono text-sm text-accent">{model.code}</span>

@@ -105,6 +105,64 @@ export function bmi(m: Pick<Morphology, 'estatura' | 'peso'>): number | null {
   return m.peso / (h * h);
 }
 
+// ---------------------------------------------------------------- cualidades rápidas
+
+/** Estatura a simple vista: bajo, medio o alto (cm de referencia por sexo). */
+export const STATURES = [
+  { id: 'bajo', name: 'Bajo', cm: { masculino: 160, femenino: 150 } },
+  { id: 'medio', name: 'Medio', cm: { masculino: 172, femenino: 160 } },
+  { id: 'alto', name: 'Alto', cm: { masculino: 186, femenino: 173 } },
+] as const;
+export type Stature = (typeof STATURES)[number]['id'];
+
+/** Contextura a simple vista: somatotipo e IMC de referencia. */
+export const BUILDS = [
+  { id: 'flaco', name: 'Flaco', somatotipo: 'ectomorfo', imc: 18 },
+  { id: 'medio', name: 'Medio', somatotipo: '', imc: 22.5 },
+  { id: 'acuerpado', name: 'Acuerpado', somatotipo: 'mesomorfo', imc: 26 },
+  { id: 'gordo', name: 'Gordo', somatotipo: 'endomorfo', imc: 33 },
+] as const;
+export type BuildId = (typeof BUILDS)[number]['id'];
+
+const cmFor = (m: Pick<Morphology, 'sexo'>, id: Stature) =>
+  STATURES.find((x) => x.id === id)!.cm[m.sexo === 'femenino' ? 'femenino' : 'masculino'];
+
+/** Cualidad de estatura que corresponde a los centímetros cargados (o null sin dato). */
+export function statureOf(m: Pick<Morphology, 'sexo' | 'estatura'>): Stature | null {
+  if (!(m.estatura > 0)) return null;
+  const mid = cmFor(m, 'medio');
+  return m.estatura < mid - 6 ? 'bajo' : m.estatura > mid + 7 ? 'alto' : 'medio';
+}
+
+/** Cualidad de contextura según el somatotipo y el IMC (o null sin dato). */
+export function buildOf(m: Morphology): BuildId | null {
+  const v = bmi(m);
+  if (v == null) {
+    const b = BUILDS.find((x) => x.somatotipo && x.somatotipo === m.somatotipo);
+    return b?.id ?? null;
+  }
+  if (v >= 30) return 'gordo';
+  if (v < 19.5) return 'flaco';
+  if (m.somatotipo === 'mesomorfo' || v >= 25) return 'acuerpado';
+  return 'medio';
+}
+
+/** Fija la estatura y conserva la contextura (el peso se ajusta para el mismo IMC). */
+export function withStature(m: Morphology, id: Stature): Morphology {
+  const estatura = cmFor(m, id);
+  const imc = bmi(m) ?? BUILDS[1].imc;
+  const h = estatura / 100;
+  return { ...m, estatura, peso: Math.round(imc * h * h) };
+}
+
+/** Fija la contextura: somatotipo y peso para su IMC (con estatura media si falta). */
+export function withBuild(m: Morphology, id: BuildId): Morphology {
+  const b = BUILDS.find((x) => x.id === id)!;
+  const estatura = m.estatura > 0 ? m.estatura : cmFor(m, 'medio');
+  const h = estatura / 100;
+  return { ...m, estatura, somatotipo: b.somatotipo, peso: Math.round(b.imc * h * h) };
+}
+
 /** Clasificación del IMC según la OMS. */
 export function bmiClass(v: number): string {
   if (v < 18.5) return 'Bajo peso';

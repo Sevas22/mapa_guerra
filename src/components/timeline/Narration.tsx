@@ -15,9 +15,7 @@ export function Narration() {
         FASE {current + 1}/{count}
         {phase.date ? ` · ${phase.date}` : ''}
       </div>
-      <div className="mt-[3px] font-display text-xl leading-[1.1] font-bold tracking-[0.03em] text-balance uppercase">
-        {phase.title}
-      </div>
+      <div className="mt-[3px] text-lg leading-[1.2] font-semibold text-balance">{phase.title}</div>
       {phase.desc ? <div className="mt-[5px] text-[13px] text-soft">{phase.desc}</div> : null}
       {phase.media?.length ? (
         // La galería sí recibe clics (el resto del recuadro deja pasar el ratón al mapa).

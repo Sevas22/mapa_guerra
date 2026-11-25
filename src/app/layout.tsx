@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Barlow, Barlow_Condensed, IBM_Plex_Mono } from 'next/font/google';
+import { Barlow_Condensed, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
 import 'leaflet/dist/leaflet.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './globals.css';
@@ -10,10 +10,10 @@ const barlow = Barlow_Condensed({
   weight: ['500', '600', '700'],
 });
 
-const barlowText = Barlow({
-  variable: '--font-barlow-text',
+const plexSans = IBM_Plex_Sans({
+  variable: '--font-plex-sans',
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '600'],
 });
 
 const plexMono = IBM_Plex_Mono({
@@ -30,12 +30,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#121713',
+  themeColor: '#0f1216',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="es" className={`${barlow.variable} ${barlowText.variable} ${plexMono.variable}`}>
+    <html lang="es" className={`${barlow.variable} ${plexSans.variable} ${plexMono.variable}`}>
       <body>{children}</body>
     </html>
   );

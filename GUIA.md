@@ -10,6 +10,12 @@ en vivo. Para compartir un escenario se exporta y se importa (ver el apartado 7)
 
 - **Taller 3D** y **Perfiles y vínculos** abren esas herramientas a pantalla completa; **Volver
   al mapa** regresa.
+- **Ir a coordenadas**, en el centro de la barra: acepta decimal (`4.7110, -74.0721`),
+  grados-minutos-segundos (`4°42′40″N 74°04′20″O`) o un nombre de lugar; `Enter` o **Ir**
+  lleva el mapa allí. La búsqueda por nombre usa Nominatim (OpenStreetMap), necesita internet y
+  solo busca en Colombia; los resultados y avisos se despliegan debajo de la barra. **Ciudades**
+  tiene una lista de ciudades y **Marcar punto** deja un punto en el sitio. En pantallas
+  angostas se ocultan la lista de ciudades y Marcar punto.
 - Nombre del escenario y estado del guardado («Guardado HH:MM»). El escenario se guarda solo en
   el navegador. Si aparece «Sin autoguardado», el navegador no pudo guardar (por ejemplo, porque
   no tiene espacio): exporta el escenario cuanto antes.
@@ -31,6 +37,15 @@ en vivo. Para compartir un escenario se exporta y se importa (ver el apartado 7)
     que se ve cómo el expediente se densifica hasta converger en un punto de interés. Las notas
     de cada registro dicen qué aporta y cuál es el límite de esa evidencia. El objetivo («ÉCHO»)
     aparece primero como posible (marco punteado) y solo se confirma en la última fase.
+  - **Operación Telaraña**, una operación completa en 8 fases que usa todas las herramientas
+    conectadas: inteligencia (la red), vigilancia con fuente humana y dron MQ-9, aislamiento
+    con puestos de control, inserción aérea con dos UH-60, asalto al campamento del cabecilla,
+    acciones simultáneas contra bienes y finanzas, neutralización de los enlaces con las
+    estructuras aliadas y consolidación. Trae 27 fichas (con morfología y figura 3D del
+    cabecilla), el grafo de la red con cada persona enlazada a su ficha y las fuentes, las
+    fichas y el grafo colocados en el mapa, y modelos 3D reales de helicóptero, dron, HMMWV y
+    camión. Con **Reproducir** la cámara recorre las fases; en **Perfiles y vínculos → Red** se
+    ve por qué el cabecilla es el hub y los enlaces Zorro y Tigre son los puentes.
 - **Nuevo** empieza un escenario vacío.
 - **Abrir** importa un `.json`, incluidos los del prototipo HTML original.
 - **Guardar archivo** descarga el escenario (`.json`) con los adjuntos dentro del archivo.
@@ -44,13 +59,8 @@ Arriba, fijos, están el bando, la fuerza, el buscador y **Seleccionar y mover**
 símbolos se reparten en cuatro pestañas: **Unidades**, **Puntos**, **Trazos y áreas** y
 **Tareas**. Un punto ámbar en una pestaña indica que ahí está la herramienta activa. El
 **buscador** encuentra cualquier símbolo por su nombre o grupo sin importar la pestaña
-(«fusilero», «emboscada», «puente»…); `Esc` lo limpia. **Ir a coordenadas o a una ciudad** está
-plegado al final de la columna.
+(«fusilero», «emboscada», «puente»…); `Esc` lo limpia.
 
-- **Ir a coordenadas**: acepta decimal (`4.7110, -74.0721`), grados-minutos-segundos
-  (`4°42′40″N 74°04′20″O`) o un nombre de lugar. La búsqueda por nombre usa Nominatim
-  (OpenStreetMap), necesita internet y solo busca en Colombia. También hay una lista de ciudades.
-  **Marcar punto** deja un punto en ese sitio.
 - **Bando**: amigo (rectángulo azul), hostil (rombo rojo), neutral (cuadrado verde) o
   desconocido (trébol amarillo). Sigue el MFRE 1-02.
 - **Fuerza o estructura**: para amigos hay EJC, ARC, FAC, Policía y organización gubernamental;
@@ -247,8 +257,12 @@ organización, estructura, ubicación, contacto, foto y notas. **Cargar planilla
 usa **Colocar plantilla en el mapa**, o **Colocar esta ficha en el mapa** para uno solo; luego
 haz clic en el mapa. En el inspector de la ficha se eligen los perfiles y el ancho.
 
-**Morfología.** En cada perfil se registran las características físicas: sexo, edad aproximada,
-estatura (cm), peso (kg), somatotipo (ectomorfo, mesomorfo o endomorfo), color de piel, cabello y
+**Morfología.** Arriba se eligen las cualidades a simple vista, con botones: **sexo** (hombre o
+mujer), **estatura** (bajo, medio o alto), **contextura** (flaco, medio, acuerpado o gordo) y
+**color de piel**. Cada cualidad fija medidas coherentes (por ejemplo, «gordo» pone somatotipo
+endomorfo y el peso de un IMC de obesidad; cambiar la estatura conserva la contextura) y la
+figura cambia al instante. **Más detalles** abre lo demás, que es opcional: estatura (cm), peso
+(kg) y edad exactos, somatotipo (ectomorfo, mesomorfo o endomorfo), cabello y
 peinado, vello facial, ojos y señas particulares (cicatrices, tatuajes, cojera…). Se calculan el
 IMC con su clasificación (bajo peso, normal, sobrepeso, obesidad) y la complexión (flaco, media,
 atlética, robusta, gordo). La descripción aparece en la ficha del mapa y en la planilla CSV
@@ -257,13 +271,13 @@ la **figura 3D** de la persona con esas proporciones y la vestimenta elegida (ca
 con o sin arma); **Crear figura 3D y colocar en el mapa** la convierte en modelo del taller y pone
 la unidad: integrantes de la amenaza en rojo y propios en azul.
 
-**Cuerpo humano realista.** Por defecto la figura de la persona es un cuerpo humano real
-(hombre o mujer según el sexo del perfil; modelos de Quaternius, licencia CC0, en
+**Cuerpo humano realista.** Por defecto la figura de la persona es un maniquí anatómico con
+proporciones humanas reales, como en una lámina de morfología (hombre o mujer según el sexo del
+perfil; «Male & Female Base Mesh Pack» de FormForge3D, licencia CC BY 4.0, en
 `public/models/humanos`). Se adapta a cada persona: la estatura lo escala; el peso y el
 somatotipo ensanchan hombros, cadera y abdomen y engrosan brazos y piernas; la piel toma el tono
-elegido; el cabello sale según el peinado (corto, rapado, largo, recogido o calvo) y el color, con
-barba si se marca. **Figura simple** vuelve a la figura con vestimenta (camuflado o civil, con o
-sin arma). **Usar un cuerpo propio (.glb)** reemplaza el cuerpo incluido por otro modelo (p. ej.
+elegido. El maniquí no lleva pelo ni ropa: el cabello, la barba y los ojos quedan en la
+descripción de la ficha. **Usar un cuerpo propio (.glb)** reemplaza el cuerpo incluido por otro modelo (p. ej.
 de MakeHuman exportado desde Blender); si trae formas de mezcla de peso, delgadez, músculo o sexo,
 se usan esas.
 

@@ -5,9 +5,13 @@ import {
   bmiClass,
   bodyShape,
   build,
+  buildOf,
   hasMorphology,
   morphologySummary,
   newMorphology,
+  statureOf,
+  withBuild,
+  withStature,
 } from './morphology';
 import { OUTFIT_PRESETS, personModel } from './personModel';
 import { newProfile, profilesFromCsv, profilesToCsv, type Profile } from './profiles';
@@ -109,5 +113,25 @@ describe('morfología', () => {
     const front = (p: Profile) =>
       partsBounds(modelParts(personModel(p, civil)).filter((x) => x.pos[1] > 0.8)).max[0];
     expect(front(fat)).toBeGreaterThan(front(base) + 0.03);
+  });
+
+  it('las cualidades a simple vista fijan medidas coherentes y se reconocen', () => {
+    const base = newMorphology({ sexo: 'masculino' });
+    const gordo = withBuild(base, 'gordo');
+    expect(gordo.somatotipo).toBe('endomorfo');
+    expect(bmi(gordo)!).toBeGreaterThan(30);
+    expect(buildOf(gordo)).toBe('gordo');
+    expect(buildOf(withBuild(base, 'flaco'))).toBe('flaco');
+    expect(buildOf(withBuild(base, 'acuerpado'))).toBe('acuerpado');
+    expect(buildOf(withBuild(base, 'medio'))).toBe('medio');
+    // Cambiar la estatura conserva la contextura.
+    const alto = withStature(gordo, 'alto');
+    expect(statureOf(alto)).toBe('alto');
+    expect(buildOf(alto)).toBe('gordo');
+    expect(alto.peso).toBeGreaterThan(gordo.peso);
+    const baja = withStature(newMorphology({ sexo: 'femenino' }), 'bajo');
+    expect(statureOf(baja)).toBe('bajo');
+    expect(baja.estatura).toBeLessThan(alto.estatura);
+    expect(statureOf(newMorphology())).toBeNull();
   });
 });

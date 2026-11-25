@@ -18,7 +18,6 @@ import {
 import { pointOpts, pointSVG, previewLine, textPreviewSVG, unitSVG } from '@/domain/symbols';
 import type { FactionId, LineType, PointType, UnitType } from '@/domain/types';
 import { useEditorStore, type Tool } from '@/store/editorStore';
-import { GotoCoords } from './GotoCoords';
 
 const UNIT_GROUPS: UnitGroup[] = [
   'Armas y servicios',
@@ -255,10 +254,6 @@ export function Palette() {
           ))}
         </>
       )}
-      <details className="pal-goto mt-auto">
-        <summary>Ir a coordenadas o a una ciudad</summary>
-        <GotoCoords />
-      </details>
     </div>
   );
 }

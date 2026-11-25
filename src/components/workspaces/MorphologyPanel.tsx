@@ -10,12 +10,20 @@ import {
   HAIR_STYLES,
   HAIR_STYLE_NAMES,
   SKIN_TONES,
+  BUILDS,
   SOMATOTYPES,
   SOMATOTYPE_DEFS,
+  STATURES,
   bmi,
   bmiClass,
   build,
+  buildOf,
   newMorphology,
+  statureOf,
+  withBuild,
+  withStature,
+  type BuildId,
+  type Stature,
   type FacialHair,
   type HairStyle,
   type Morphology,
@@ -66,6 +74,43 @@ function Swatches({
         value={value}
         onChange={(e) => onPick(e.target.value)}
       />
+    </div>
+  );
+}
+
+/** Fila de botones para elegir una cualidad a simple vista. */
+function Choice({
+  label,
+  hint,
+  options,
+  value,
+  onPick,
+}: {
+  label: string;
+  hint?: string;
+  options: (readonly [string, string])[];
+  value: string;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <div className="field">
+      <span className="flex items-baseline justify-between">
+        {label}
+        {hint ? <span className="text-soft">{hint}</span> : null}
+      </span>
+      <div className="morph-choice" role="radiogroup" aria-label={label}>
+        {options.map(([id, name]) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={value === id}
+            onClick={() => onPick(id)}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -148,121 +193,141 @@ export default function MorphologyPanel({
   return (
     <section className="mt-5 border-t border-line pt-4">
       <h3 className="sec-h big">Morfología</h3>
-      <div className="grid grid-cols-[1fr_250px] gap-4 max-[700px]:grid-cols-1">
-        <div>
-          <div className="grid grid-cols-2 gap-x-3">
-            <label className="field">
-              Sexo
-              <select value={m.sexo} onChange={(e) => setM({ sexo: e.target.value as Sex | '' })}>
-                <option value="">Sin dato</option>
-                <option value="masculino">Masculino</option>
-                <option value="femenino">Femenino</option>
-              </select>
-            </label>
-            {num('edad', 'Edad aproximada (años)', 110, '35')}
-            {num('estatura', 'Estatura (cm)', 230, '170')}
-            {num('peso', 'Peso (kg)', 300, '75')}
-          </div>
-
-          <div className="mb-3 flex flex-wrap items-center gap-2 rounded border border-line bg-bg px-3 py-2 text-[13px]">
-            {v != null ? (
-              <>
-                <span className="font-mono text-base" style={{ color: bmiColor(v) }}>
-                  IMC {dec(v)}
-                </span>
-                <span style={{ color: bmiColor(v) }}>{bmiClass(v)}</span>
-              </>
-            ) : (
-              <span className="text-muted">Con estatura y peso se calcula el IMC.</span>
-            )}
-            {b ? (
-              <span className="ml-auto text-soft">
-                Complexión: <b>{b}</b>
-              </span>
-            ) : null}
-          </div>
-
-          <div className="field">
-            Somatotipo
-            <div className="grid grid-cols-3 gap-1.5">
-              {SOMATOTYPES.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  aria-pressed={m.somatotipo === s}
-                  title={SOMATOTYPE_DEFS[s].hint}
-                  className="rounded border border-line px-2 py-1.5 text-left aria-pressed:border-accent aria-pressed:bg-panel-2"
-                  onClick={() => setM({ somatotipo: m.somatotipo === s ? '' : s })}
-                >
-                  <div className="text-[13px]">{SOMATOTYPE_DEFS[s].name}</div>
-                  <div className="text-[10px] leading-tight text-muted">
-                    {SOMATOTYPE_DEFS[s].hint}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
+      <p className="note mb-3">
+        Elige las cualidades a simple vista; la figura cambia al instante. Las medidas exactas son
+        opcionales.
+      </p>
+      <div className="grid grid-cols-[1fr_260px] gap-4 max-[700px]:grid-cols-1">
+        <div className="grid content-start gap-3">
+          <Choice
+            label="Sexo"
+            options={[
+              ['masculino', 'Hombre'],
+              ['femenino', 'Mujer'],
+            ]}
+            value={m.sexo}
+            onPick={(sexo) => setM({ sexo: sexo as Sex })}
+          />
+          <Choice
+            label="Estatura"
+            hint={m.estatura > 0 ? `${dec(m.estatura / 100, 2)} m` : ''}
+            options={STATURES.map((x) => [x.id, x.name] as const)}
+            value={statureOf(m) ?? ''}
+            onPick={(id) => set({ fisico: withStature(m, id as Stature) })}
+          />
+          <Choice
+            label="Contextura"
+            hint={m.peso > 0 ? `${m.peso} kg${v != null ? ` · IMC ${dec(v)}` : ''}` : ''}
+            options={BUILDS.map((x) => [x.id, x.name] as const)}
+            value={buildOf(m) ?? ''}
+            onPick={(id) => set({ fisico: withBuild(m, id as BuildId) })}
+          />
           <div className="field">
             Color de piel
             <Swatches list={SKIN_TONES} value={m.piel} onPick={(piel) => setM({ piel })} />
           </div>
-          <div className="field">
-            Cabello
-            <Swatches
-              list={HAIR_COLORS}
-              value={m.cabello}
-              onPick={(cabello) => setM({ cabello })}
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-x-3 max-[600px]:grid-cols-1">
-            <label className="field">
-              Peinado
-              <select
-                value={m.peinado}
-                onChange={(e) => setM({ peinado: e.target.value as HairStyle })}
-              >
-                {HAIR_STYLES.map((h) => (
-                  <option key={h} value={h}>
-                    {HAIR_STYLE_NAMES[h]}
-                  </option>
+
+          <details className="morph-more">
+            <summary>Más detalles: medidas exactas, edad, cabello y señas</summary>
+            <div className="grid grid-cols-3 gap-x-3 pt-2 max-[600px]:grid-cols-1">
+              {num('estatura', 'Estatura (cm)', 230, '170')}
+              {num('peso', 'Peso (kg)', 300, '75')}
+              {num('edad', 'Edad aproximada', 110, '35')}
+            </div>
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded border border-line bg-bg px-3 py-2 text-[13px]">
+              {v != null ? (
+                <>
+                  <span className="font-mono" style={{ color: bmiColor(v) }}>
+                    IMC {dec(v)}
+                  </span>
+                  <span style={{ color: bmiColor(v) }}>{bmiClass(v)}</span>
+                </>
+              ) : (
+                <span className="text-muted">Con estatura y peso se calcula el IMC.</span>
+              )}
+              {b ? (
+                <span className="ml-auto text-soft">
+                  Complexión: <b>{b}</b>
+                </span>
+              ) : null}
+            </div>
+            <div className="field">
+              Somatotipo
+              <div className="grid grid-cols-3 gap-1.5">
+                {SOMATOTYPES.map((x) => (
+                  <button
+                    key={x}
+                    type="button"
+                    aria-pressed={m.somatotipo === x}
+                    title={SOMATOTYPE_DEFS[x].hint}
+                    className="rounded border border-line px-2 py-1.5 text-left aria-pressed:border-accent aria-pressed:bg-panel-2"
+                    onClick={() => setM({ somatotipo: m.somatotipo === x ? '' : x })}
+                  >
+                    <div className="text-[13px]">{SOMATOTYPE_DEFS[x].name}</div>
+                    <div className="text-[10px] leading-tight text-muted">
+                      {SOMATOTYPE_DEFS[x].hint}
+                    </div>
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </div>
+            <div className="field">
+              Cabello
+              <Swatches
+                list={HAIR_COLORS}
+                value={m.cabello}
+                onPick={(cabello) => setM({ cabello })}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-x-3 max-[600px]:grid-cols-1">
+              <label className="field">
+                Peinado
+                <select
+                  value={m.peinado}
+                  onChange={(e) => setM({ peinado: e.target.value as HairStyle })}
+                >
+                  {HAIR_STYLES.map((h) => (
+                    <option key={h} value={h}>
+                      {HAIR_STYLE_NAMES[h]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                Vello facial
+                <select
+                  value={m.barba}
+                  onChange={(e) => setM({ barba: e.target.value as FacialHair })}
+                >
+                  {FACIAL_HAIR.map((h) => (
+                    <option key={h} value={h}>
+                      {FACIAL_HAIR_NAMES[h]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                Ojos
+                <select value={m.ojos} onChange={(e) => setM({ ojos: e.target.value })}>
+                  <option value="">Sin dato</option>
+                  {EYE_COLORS.map((c) => (
+                    <option key={c} value={c}>
+                      {c[0]!.toUpperCase() + c.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <label className="field">
-              Vello facial
-              <select
-                value={m.barba}
-                onChange={(e) => setM({ barba: e.target.value as FacialHair })}
-              >
-                {FACIAL_HAIR.map((h) => (
-                  <option key={h} value={h}>
-                    {FACIAL_HAIR_NAMES[h]}
-                  </option>
-                ))}
-              </select>
+              Señas particulares
+              <textarea
+                rows={2}
+                placeholder="Cicatrices, tatuajes, lunares, cojera, lentes, prótesis…"
+                value={m.senas}
+                onChange={(e) => setM({ senas: e.target.value })}
+              />
             </label>
-            <label className="field">
-              Ojos
-              <select value={m.ojos} onChange={(e) => setM({ ojos: e.target.value })}>
-                <option value="">Sin dato</option>
-                {EYE_COLORS.map((c) => (
-                  <option key={c} value={c}>
-                    {c[0]!.toUpperCase() + c.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="field">
-            Señas particulares
-            <textarea
-              rows={2}
-              placeholder="Cicatrices, tatuajes, lunares, cojera, lentes, prótesis…"
-              value={m.senas}
-              onChange={(e) => setM({ senas: e.target.value })}
-            />
-          </label>
+          </details>
         </div>
 
         <div>
@@ -308,8 +373,8 @@ export default function MorphologyPanel({
               ) : (
                 <>
                   <p className="text-muted">
-                    Cuerpo humano real (hombre o mujer según el sexo), con el peinado, la barba, la
-                    piel y las proporciones del perfil.
+                    Maniquí anatómico con proporciones humanas reales (hombre o mujer), con la piel,
+                    la estatura y la contextura del perfil.
                   </p>
                   <button
                     type="button"
@@ -337,9 +402,8 @@ export default function MorphologyPanel({
             Crear figura 3D y colocar en el mapa
           </button>
           <p className="note mt-1.5">
-            La figura toma la estatura, el somatotipo, el peso, la piel y el cabello. Queda en el
-            taller 3D como modelo y se ve en la vista 3D del mapa. Cuerpos realistas: Quaternius
-            (CC0).
+            Queda en el taller 3D como modelo y se ve en la vista 3D del mapa. Maniquí: «Male &amp;
+            Female Base Mesh Pack», FormForge3D, CC BY 4.0.
           </p>
         </div>
       </div>

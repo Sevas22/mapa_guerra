@@ -1,3 +1,17 @@
+Cuerpo de la morfologia (por defecto)
+=====================================
+
+maniqui-hombre.glb y maniqui-mujer.glb provienen de
+"Male & Female Base Mesh Pack" por FormForge3D (aleenasani841):
+https://sketchfab.com/3d-models/male-female-base-mesh-pack-ec3041da6a214c1c995f3d47dc7d04c1
+
+Licencia: CC BY 4.0 (Creative Commons Atribucion 4.0).
+https://creativecommons.org/licenses/by/4.0/
+
+Cambios: el paquete se separo en dos archivos (hombre y mujer), cada uno
+centrado, con los pies en el suelo, escalado a 1,75 m y 1,63 m, y con un
+material de piel sin textura que toma el tono de cada persona.
+
 Cuerpos humanos realistas
 =========================
 

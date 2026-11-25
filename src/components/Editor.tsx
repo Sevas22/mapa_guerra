@@ -30,6 +30,9 @@ export default function Editor() {
   const view3d = useEditorStore((s) => s.view3d);
   return (
     <div className="app-grid">
+      <div className="area-cls cls-banner" role="note">
+        SIN CLASIFICAR · EJERCICIO DE ENTRENAMIENTO · DATOS FICTICIOS
+      </div>
       <Header />
       <aside
         className="area-pal min-h-0 overflow-auto border-r border-line bg-panel"

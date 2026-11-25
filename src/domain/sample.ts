@@ -1,4 +1,5 @@
 import { airAssaultScenario } from './airAssault';
+import { telaranaScenario } from './telarana';
 import { argosScenario } from './argos';
 import { exerciseScenario } from './exercise';
 import { uid } from './id';
@@ -220,4 +221,5 @@ export const EXAMPLES: ReadonlyArray<{ name: string; create: () => Scenario }> =
   { name: 'Ejercicio Halcón (inserción aérea)', create: () => exerciseScenario() },
   { name: 'Ejercicio Colibrí (asalto aéreo con helicóptero)', create: () => airAssaultScenario() },
   { name: 'Ejercicio Argos (inteligencia integrada)', create: () => argosScenario() },
+  { name: 'Operación Telaraña (operación completa)', create: () => telaranaScenario() },
 ];

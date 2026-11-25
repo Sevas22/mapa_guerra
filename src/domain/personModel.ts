@@ -49,30 +49,20 @@ export const defaultOutfit = (rol: ProfileRole): Outfit =>
 const HUMANS = '/models/humanos/';
 
 /**
- * Cuerpo humano realista incluido en la app (Quaternius, CC0): hombre o mujer según el perfil,
- * con el peinado y la barba de su morfología. Mira hacia +z, por eso el giro de 90°.
+ * Cuerpo humano incluido en la app: maniquí anatómico con proporciones reales, hombre o mujer
+ * según el perfil («Male & Female Base Mesh Pack» de FormForge3D, CC BY 4.0). No trae textura:
+ * toma el color de piel elegido y se deforma con la estatura, el peso y la contextura. Mira
+ * hacia +z, por eso el giro de 90°.
  */
 export function builtinHuman(f: Morphology): CustomMesh {
   const female = f.sexo === 'femenino';
-  const hair: Record<string, string | null> = {
-    corto: 'pelo-corto',
-    rapado: female ? 'pelo-rapado-mujer' : 'pelo-rapado',
-    largo: 'pelo-largo',
-    recogido: 'pelo-recogido',
-    calvo: null,
-  };
-  const parts = [hair[f.peinado] ?? null, !female && f.barba === 'barba' ? 'pelo-barba' : null]
-    .filter((x): x is string => !!x)
-    .map((n) => `${HUMANS}${n}.glb`);
   return {
-    id: `${HUMANS}${female ? 'mujer' : 'hombre'}.glb`,
-    name: female ? 'Cuerpo realista (mujer)' : 'Cuerpo realista (hombre)',
+    id: `${HUMANS}maniqui-${female ? 'mujer' : 'hombre'}.glb`,
+    name: female ? 'Maniquí anatómico (mujer)' : 'Maniquí anatómico (hombre)',
     yaw: 90,
     anim: '(ninguna)',
-    parts,
-    // Tonos medios de las texturas incluidas (piel clara y cabello gris para teñir).
-    skinRef: '#a67858',
-    hairRef: '#8f908d',
+    skinRef: '#c99a72',
+    credit: 'Male & Female Base Mesh Pack · FormForge3D (aleenasani841) · CC BY 4.0',
   };
 }
 
